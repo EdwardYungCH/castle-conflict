@@ -3,12 +3,18 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Castle Conflict">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="manifest" href="pwa/manifest.webmanifest">
+<link rel="apple-touch-icon" href="pwa/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="pwa/icon-192.png">
 <title>Castle Conflict</title>
 <style>
 :root{color-scheme:dark;--bg:#0d0f12;--ink:#d9dccf;--soft:#8b928c;--line:#262b30}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;overscroll-behavior:none}
-body{display:flex;flex-direction:column;height:100dvh}
+body{display:flex;flex-direction:column;height:100dvh;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 header{display:flex;align-items:center;justify-content:space-between;padding:6px 16px;gap:12px;flex:none}
 header b{font:600 13px/1 Georgia,serif;letter-spacing:2px;color:#e8d9a0}
 header small{color:var(--soft);font-size:11px;margin-left:10px;letter-spacing:0}
@@ -26,4 +32,5 @@ footer{flex:none;color:var(--soft);font-size:11px;padding:6px 16px;text-align:ce
 <div id="stage"><canvas id="game" width="480" height="320" aria-label="Castle Conflict 遊戲畫面"></canvas></div>
 <footer>觸控或滑鼠操作，與原版相同。鍵盤：1–9 出兵　空白鍵 暫停　Esc 退出　雙人模式中 Q–O 為紅方出兵。手機請橫向使用。</footer>
 <script>/*__SCRIPT__*/</script>
+<script>if("serviceWorker" in navigator&&location.protocol.startsWith("http"))addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));</script>
 </body></html>
