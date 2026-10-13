@@ -2,6 +2,7 @@
 const C=require("core");
 const {Node,Scene,Menu,Button,TextItem,Label,Img,Sprite,ColorLayer,DrawNode,Director,Audio,sfx,sprite,text,textWidth,BTN,CON,btn,helpBanner,fadeLayer,Store,FadeIn,FadeOut,Seq,Delay,Call}=C;
 const D=require("data");
+const X=require("extras");
 const {UNITS,UNIT_KEYS,QUICK_ARMY}=require("engine");
 const {yesNo,message}=require("dialogs");
 const S=()=>require("scenes");
@@ -36,6 +37,7 @@ class MenuScene extends Scene{
       btn('multi',240,234,()=>{if(!active())return;sfx('select.wav');Director.replace(new MPSelectScene());}),
       btn('aboutUs',240,287,()=>{if(!active())return;sfx('select.wav');this.hideMenu();this.logo.visible=false;L.add(new CreditsLayer(this),5);}),
       new Button(BTN,[768,384,48,48],[768,432,48,48],40,288,()=>{if(!active())return;sfx('select.wav');Director.replace(new PreviewScene());}),
+      new Button(CON,[0,208,48,48],null,40,236,()=>{if(!active())return;sfx('select.wav');Director.replace(new X.RecordsScene());},{scale:.75}),
       new Button(BTN,[816,384,48,48],[816,432,48,48],440,288,()=>{if(!active())return;sfx('select.wav');Director.replace(new SurveyScene());})]);
     L.add(this.main,5);this.active=!fade;
     if(fade){for(const c of this.main.children){c.opacity=0;c.run(FadeIn(.5));}this.after(.5,()=>{this.active=true;});}
@@ -50,9 +52,10 @@ function startQuick(){Director.replace(new CampaignLoadingScene(D.quickParams(),
 class QuickPlayLayer extends Node{
   constructor(owner){super();this.owner=owner;
     this.menu=this.add(new Menu([
-      btn('play',240,155,()=>{sfx('select.wav');if(Store.get('quicksave')){this.menu.remove();this.add(new OverwriteLayer(this));}else startQuick();}),
-      btn('custom',240,208,()=>{sfx('select.wav');Director.push(new SettingsScene());}),
-      btn('mainMenu',240,261,()=>{sfx('select.wav');owner.returnFromLayer(this);})]));}
+      btn('play',240,120,()=>{sfx('select.wav');if(Store.get('quicksave')){this.menu.remove();this.add(new OverwriteLayer(this));}else startQuick();}),
+      btn('custom',240,168,()=>{sfx('select.wav');Director.push(new SettingsScene());}),
+      X.textBtn('Endless',240,216,()=>{sfx('select.wav');Director.replace(new CampaignLoadingScene(X.endlessParams(),{mimicHome:true,towers:true}));}),
+      btn('mainMenu',240,264,()=>{sfx('select.wav');owner.returnFromLayer(this);})]));}
 }
 class OverwriteLayer extends Node{
   constructor(){super();this.add(helpBanner(155));this.add(new Label('white','A saved game was found.',240,145));
@@ -153,7 +156,7 @@ function bannerLayer(parent,victory,player,enemy,dy=-10,labels=['VICTORY','DEFEA
 }
 class GameOverScene extends Scene{
   constructor({victory,player,enemy,difficulty}){
-    super();const score=D.GameScore.update(victory,difficulty);
+    super();const score=D.GameScore.update(victory,difficulty);X.Stats.battle(player.score,victory,{flawless:victory&&player.hp===player.maxHp,airOnly:victory&&player.airOnly,unicorn:player.unicorn});
     if(difficulty===2&&victory&&player.hp>0){const st=D.Settings.load();st.hasTrophy=true;D.Settings.save(st);score.hasTrophy=true;D.GameScore.save(score);}
     this.add(new Img('bg_results.png'));this.player=player;this.difficulty=difficulty;
     this.add(new Menu([btn('continue_',240,160,()=>{sfx('select.wav');if(this.player&&this.player.hp>0){const h=this.player.hp/this.player.maxHp;this.player=null;this.add(new GoodJobLayer(difficulty,h),1);}else Director.replace(new MenuScene());})]),0);

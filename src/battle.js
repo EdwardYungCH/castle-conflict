@@ -47,7 +47,7 @@ class BattleScene extends Scene{
   constructor(params,{restore=null}={}){
     super();this.params=params;this.pausable=true;const P=params;
     const tg=D.TREE_GROWTH[P.treeGrowth]??D.TREE_GROWTH[1];
-    const opts={ai:P.mode===2?[false,false]:[false,true],difficulty:P.difficulty,campaign:P.mode===1,campaignDifficulty:P.campaignDifficulty??0,globalDifficulty:P.globalDifficulty??0,
+    const opts={ai:P.mode===2?[false,false]:[false,true],difficulty:P.difficulty,campaign:P.mode===1||!!P.campaign,campaignDifficulty:P.campaignDifficulty??0,globalDifficulty:P.globalDifficulty??0,
       rosters:[P.playerUnits,P.enemyUnits],cannons:P.cannons,hint:P.hint,easyQuick:P.easyQuick,aiFrequency:P.aiFrequency,mode:P.mode,
       config:{startWood:P.startGold,castleHealth:P.playerHealth,treeChance:tg.treeChance,maxTrees:tg.maxTrees,allowHeals:P.allowHeals,tallTrees:P.elements.includes(1),antlion:P.elements.includes(2),blizzard:P.elements.includes(3),thinIce:P.elements.includes(4)}};
     this.battle=restore?Battle.restore(restore,opts):new Battle(opts);const b=this.battle;
@@ -55,7 +55,7 @@ class BattleScene extends Scene{
     this.skinL=D.SKINS[P.playerSkin].left;this.skinR=D.SKINS[P.mode===2?P.enemySkin:P.enemySkin].right;
     this.unitAtlas=[this.skinL.units,this.skinR.units];this.castleAtlas=[this.skinL.castle,this.skinR.castle];
     this.lastHealth=[-1,-1];this.hpAcc=0;this.floats=[];this.heard=0;this.gameOver=false;this.buyingAllowed=false;this.hudVisible=true;this.ultimateClicks=0;
-    this.explosions=[];this.debris=[false,false];this.shakeT=0;this.shakeM=0;this.achieve=P.mode===1?{nonWood:false,nonAir:false,nonWitch:false,nonWorm:false,wood:false,air:false,witch:true,worm:true}:null;
+    this.explosions=[];this.debris=[false,false];this.shakeT=0;this.shakeM=0;this.waveBanner=null;this.airOnly=true;this.achieve=P.mode===1?{nonWood:false,nonAir:false,nonWitch:false,nonWorm:false,wood:false,air:false,witch:true,worm:true}:null;
     // scenery
     const S=D.SCENERY[P.scenery]||{};this.scn=S;this.clouds=(S.clouds||[]).map(f=>{const big=f.endsWith('1.png');return {img:f,y:big?40:112,speed:big?15:8,xs:[240,-240]};});
     this.birds=S.birds?{dark:S.birds==='dark',x:0,y:320,flying:null,next:R(20)+8}:null;
@@ -102,14 +102,14 @@ class BattleScene extends Scene{
     if(b.spawn(side,type)){sfx('buy.wav');}
   }
   buyDouble(side){if(!this.buyingAllowed||Director.paused)return;if(this.battle.buyDoubleIncome(side)){sfx('buy.wav');const it=this.unitMenus[side].children.find(c=>c.isDouble);if(it)it.enabled=false;}}
-  createGod(){this.ultimateClicks++;if(this.ultimateClicks>2){this.ultimateClicks=0;if(this.battle.running)this.battle.createUnit(0,'unicorn');}}
+  createGod(){this.ultimateClicks++;if(this.ultimateClicks>2){this.ultimateClicks=0;if(this.battle.running){this.battle.createUnit(0,'unicorn');this.battle.sides[0].unicorn=true;}}}
   togglePause(){if(!this.activeHud()||this.pauseLocked)return;sfx('select.wav');this.setPaused(!Director.paused);}
   setPaused(p){Director.paused=p;if(this.pauseBtn){this.pauseBtn.normal=p?[48,32,48,48]:[0,32,48,48];this.pauseBtn.sel=p?[48,80,48,48]:[0,80,48,48];}}
   help(){if(!this.activeHud())return;sfx('select.wav');Director.push(new HelpScene());}
   resume(){Director.paused=this.pausedBefore??Director.paused;}
   askQuit(){
     if(!this.activeHud())return;sfx('select.wav');const P=this.params;
-    const msg=P.mode===0?'(Your game will be saved)':P.mode===1?(P.state.numCastlesOwned()!==0?'(You will be taken to the map)':'(You will be taken to the menu)'):'Really forfeit?';
+    const msg=P.mode===0?'(Your game will be saved)':P.mode===1?(P.state.numCastlesOwned()!==0?'(You will be taken to the map)':'(You will be taken to the menu)'):P.mode===3?'(Your run will end here)':'Really forfeit?';
     if(P.mode!==2){this.setPaused(true);this.pauseLocked=true;}
     this.quitLayer=shouldQuit(this,msg,()=>this.quit(),()=>{this.pauseLocked=false;this.setPaused(false);this.quitLayer=null;},6);
   }
@@ -117,6 +117,7 @@ class BattleScene extends Scene{
     this.pauseLocked=false;this.setPaused(false);const P=this.params;const S=require("scenes");
     if(P.mode===0){Store.set('quicksave',{snapshot:this.battle.snapshot(),params:{...P,state:undefined}});Director.replace(new S.MenuScene());}
     else if(P.mode===1){if(!P.state.ownsCastle(0)){D.CampaignState.remove(P.state.campaignId);Director.replace(new S.MenuScene());}else if(P.state.lastCastleBeat===1)Director.replace(new S.ShopScene(P.state,true));else Director.replace(new S.WorldMapScene(P.state));}
+    else if(P.mode===3)Director.replace(new (require("extras").EndlessResultScene)(P,this.battle));
     else Director.replace(new S.MenuScene());
   }
   saveOnUnload(){if(this.params.mode===0&&!this.gameOver&&this.battle.started)Store.set('quicksave',{snapshot:this.battle.snapshot(),params:{...this.params,state:undefined}});}
@@ -132,7 +133,17 @@ class BattleScene extends Scene{
       if(B.next<=0){sfx('birdies.wav');const left=R(2)===0;B.flying={x0:left?512:-32,x1:left?-32:512,left,t:0};B.y=320-(R(120)+180);B.x=B.flying.x0;B.next=544/30+8+R(20);}}
     for(const s of this.sparkles){s.next-=dt;if(s.next<=0){s.start=this.sceneTime;s.next=R(3)+3;}}
     if(this.shakeT>0){this.shakeT-=dt;const m=Math.trunc(this.shakeM);this.shake=this.shakeT>0&&m>0?[R(2*m+1)-m,R(2*m+1)-m]:null;}else this.shake=null;
-    if(b.winner&&!this.gameOver)this.beginGameOver();
+    if(b.winner&&!this.gameOver){if(this.params.mode===3&&b.winner==='blue')this.clearWave();else this.beginGameOver();}
+    if(this.waveBanner){this.waveBanner.t+=dt;if(this.waveBanner.t>2.5)this.waveBanner=null;}
+  }
+  // Endless mode: the enemy castle explodes, then a stronger one takes its place.
+  clearWave(){
+    const b=this.battle,P=this.params;b.winner=null;b.running=false;this.waveClearing=true;
+    const explode=this.schedule(()=>{this.explosions.push({x:Math.trunc(432+R(60)-30),y:Math.trunc(191+R(60)-30),t:0});sfx('explosion.wav');},.1);
+    this.after(.9,()=>{this.unschedule(explode);sfx('explosionbig.wav');this.debris[1]=true;b.cannons[1]=false;});
+    this.after(2.2,()=>{const wd=require("extras").nextWave(this);this.debris[1]=false;this.explosions=[];this.lastHealth[1]=-1;this.waveBanner={t:0,w:P.wave};
+      if(this.scn.snow!==(wd.realm===2)){this.scn=wd.realm===2?D.SCENERY.snow:D.SCENERY.hill;}
+      this.waveClearing=false;sfx('yay.wav');b.running=true;});
   }
   handleEvents(){
     const b=this.battle,played=new Set(),play=f=>{if(!played.has(f)){played.add(f);sfx(f);}};
@@ -148,7 +159,7 @@ class BattleScene extends Scene{
         case 'bless':play('bless.wav');break;case 'blizzard':play('ice.wav');break;case 'iceFall':play('ice.wav');play('groundkill.wav');break;case 'crew':play('explosion.wav');break;case 'necro':play('necro.wav');break;case 'worm':play('wurm.wav');break;case 'wormDie':play('wurmdie.wav');break;
         case 'gold':this.floats.push({str:(e.amount>0?'+':'')+e.amount,font:e.amount>0?'tiny':'tinyRed',x:e.x,y:e.y,life:0});break;
         case 'shake':this.shakeT=e.duration;this.shakeM=e.magnitude;break;
-        case 'unitHitEnemy':if(this.achieve&&e.side===0){const A=this.achieve;const wood=['wood','master'].includes(e.unitType);if(!wood){A.nonWood=true;A.wood=false;}else if(!A.nonWood)A.wood=true;if(!e.flies){A.nonAir=true;A.air=false;}else if(!A.nonAir)A.air=true;if(e.unitType!=='witch'){A.nonWitch=true;A.witch=false;}else if(!A.nonWitch)A.witch=true;if(e.castleStrength>0&&e.unitType!=='worm'){A.nonWorm=true;A.worm=false;}else if(!A.nonWorm)A.worm=true;}break;
+        case 'unitHitEnemy':if(e.side===0&&!e.flies&&e.castleStrength>0)this.airOnly=false;if(this.achieve&&e.side===0){const A=this.achieve;const wood=['wood','master'].includes(e.unitType);if(!wood){A.nonWood=true;A.wood=false;}else if(!A.nonWood)A.wood=true;if(!e.flies){A.nonAir=true;A.air=false;}else if(!A.nonAir)A.air=true;if(e.unitType!=='witch'){A.nonWitch=true;A.witch=false;}else if(!A.nonWitch)A.witch=true;if(e.castleStrength>0&&e.unitType!=='worm'){A.nonWorm=true;A.worm=false;}else if(!A.nonWorm)A.worm=true;}break;
       }
       this.heard=e.seq;}
   }
@@ -167,8 +178,10 @@ class BattleScene extends Scene{
   }
   goToResults(){
     const S=require("scenes"),b=this.battle,P=this.params,victory=b.sides[1].hp<=0;
+    b.sides[0].airOnly=this.airOnly;
     if(P.mode===0)Director.replace(new S.GameOverScene({victory,player:b.sides[0],enemy:b.sides[1],difficulty:P.difficulty}));
-    else if(P.mode===1)Director.replace(new S.CampaignResultScene(P,victory,this.achievements()));
+    else if(P.mode===3)Director.replace(new (require("extras").EndlessResultScene)(P,b));
+    else if(P.mode===1){require("extras").Stats.battle(b.sides[0].score,victory,{flawless:victory&&b.sides[0].hp===b.sides[0].maxHp,airOnly:victory&&this.airOnly});Director.replace(new S.CampaignResultScene(P,victory,this.achievements()));}
     else Director.replace(new S.MPResultScene(P,b));
   }
   update(dt){super.update(dt);for(const e of this.explosions)e.t+=dt;}
@@ -233,7 +246,9 @@ class BattleScene extends Scene{
       const icon=P.egypt?[112,0,16,16]:[96,16,16,16];
       for(const s of [0,1]){const str=String(Math.floor(b.sides[s].wood)),lx=s===0?148:333;text(ctx,'white',str,lx,89);sprite(ctx,CON,icon,lx-textWidth('white',str)/2-8,89);}
       for(const it of this.hud.children)it.drawSelf(ctx);
+      if(P.mode===3)text(ctx,'tiny',`Wave ${P.wave}`,240,100);
     }
+    if(this.waveBanner){const wb=this.waveBanner,a=Math.min(1,wb.t/.3,(2.5-wb.t)/.5);text(ctx,'white',`Wave ${wb.w}`,240,150,{alpha:a});}
     for(const f of this.floats)text(ctx,f.font,f.str,Math.trunc(f.x),Math.trunc(f.y),{alpha:Math.max(0,1-f.life)});
     for(const c of this.sorted())if(c!==this.hint&&c.visible&&!(c instanceof Menu))c.draw(ctx);
   }

@@ -7,4 +7,5 @@ art_north.map_icons(); art_north.castle_skin(); art_north.scenery(); art_north.u
 art_map.build(); art_map.write_js()
 art_bg.build_all()
 art_north.register_icons(); art_hud.build()
+import art_ui; art_ui.build()
 print('all art ok')

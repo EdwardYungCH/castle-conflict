@@ -229,7 +229,7 @@ class CampaignResultScene extends Scene{
     if(this.goToGameOver)Director.replace(new CampaignVictoryScene(st));else if(st.lastCastleBeat===1)Director.replace(new ShopScene(st,true));else Director.replace(new WorldMapScene(st));}
 }
 class CampaignVictoryScene extends Scene{
-  constructor(st){super();Audio.playMusic('ccwin.mp3',false);const pre=['','egypt_','north_'][st.currentMap]??'';
+  constructor(st){super();Audio.playMusic('ccwin.mp3',false);const pre=['','egypt_','north_'][st.currentMap]??'';require("extras").Stats.flag('realm'+st.currentMap);
     this.add(new Img(pre+'victory.png'));const night=this.add(new Img(pre+'victory_night.png'));night.opacity=0;night.run(new Seq(new Delay(3.25),FadeIn(1)));
     const l1=this.add(new Label('white','You have conquered the realm!',240,20));l1.opacity=0;l1.run(new Seq(new Delay(5),FadeIn(1)));
     if(!st.conqueredAllRealms()){const l2=this.add(new Label('white',"But there's more realms left!",240,40));l2.opacity=0;l2.run(new Seq(new Delay(5),FadeIn(1)));}

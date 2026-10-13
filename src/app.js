@@ -50,5 +50,5 @@ const loading=new S.LoadingScene();
   await Promise.all(Object.keys(ASSETS).filter(k=>k.endsWith('.png')).map(load));
   await Audio.init(ASSETS);
   loading.ready=true;
-  window.__cc={Director,S,C,D:require("data"),E:require("engine")};
+  window.__cc={Director,S,C,D:require("data"),E:require("engine"),X:require("extras")};
 })();
