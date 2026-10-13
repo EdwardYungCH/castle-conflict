@@ -53,7 +53,7 @@ class WorldMapScene extends Scene{
     else if(kind==='newmap')tutorial(this,[['white','New map available!',145],['tiny','Touch the ship to travel',175]],done,{sound:false});
   }
   reactivate(){this.active=true;}
-  fix(){this.pos.x=Math.max(-480,Math.min(0,this.pos.x));this.pos.y=Math.max(-320,Math.min(0,this.pos.y));}
+  fix(){const e=C.VIEW.ext;this.pos.x=Math.max(-(480-e),Math.min(-e,this.pos.x));this.pos.y=Math.max(-320,Math.min(0,this.pos.y));}
   get vx(){return -this.pos.x;}get vy(){return 320+this.pos.y;}
   toCanvas(mx,my){return [mx-this.vx,640-my-this.vy];}
   touchBegan(x,y,id){if(!this.active||!this.loaded)return;this.drag={x,y,dist:0,id};}
@@ -73,12 +73,12 @@ class WorldMapScene extends Scene{
   }
   tick(dt){if(this.loaded){this.t+=dt;for(const f of this.fx)f.t+=dt;this.fx=this.fx.filter(f=>f.t<.25);}}
   drawSelf(ctx){
-    if(!this.loaded)return;const A=this.atlas,st=this.state,t=this.t;
+    if(!this.loaded)return;const A=this.atlas,st=this.state,t=this.t;this.wideBackground=false;
     ctx.drawImage(C.IMG[this.realm.image],-this.vx,-this.vy);
     for(const f of this.fx){const [x,y]=this.toCanvas(f.x,f.y);drawEntry(ctx,A,f.name,x,y,f.t,{fps:f.fps});}
     const castleName=c=>(st.ownsCastle(c.id)?'CastleOwned':st.pathExistsToCastle(c.id)?'CastleEnemy':'CastleInactive')+(c.flipped?1:2);
     const ovl=[];
-    for(const c of this.castles){const [x,y]=this.toCanvas(...c.position);if(x<-60||x>540||y<-60||y>380)continue;drawEntry(ctx,A,castleName(c),x,y);ovl.push([c,x,y]);}
+    for(const c of this.castles){const [x,y]=this.toCanvas(...c.position);if(x<-60-C.VIEW.ext||x>540+C.VIEW.ext||y<-60||y>380)continue;drawEntry(ctx,A,castleName(c),x,y);ovl.push([c,x,y]);}
     if(this.fake){const c=this.fake,[x,y]=this.toCanvas(...c.position);drawEntry(ctx,A,'CastleEnemy'+(c.flipped?1:2),x,y);ovl.push([c,x,y]);}
     for(const b of BOATS[this.map]){const [x,y]=this.toCanvas(b.x,b.y);drawEntry(ctx,A,'BoatAnimation',x,y,t,{fps:10});}
     for(const [c,x,y] of ovl){const v=c.flipped?1:2;for(const u of c.upgrades){if(u===0||u===5)drawEntry(ctx,A,'Tower'+v,x,y);else if(u===3)drawEntry(ctx,A,'Seige'+v,x,y);else if(u===2||u===4)drawEntry(ctx,A,`MagicEngine${v}Animation`,x,y,t,{fps:1/.15});}}

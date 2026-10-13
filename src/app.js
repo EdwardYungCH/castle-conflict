@@ -4,14 +4,16 @@ const {Director,Touch,Audio,IMG}=C;
 const S=require("scenes");
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 let scale=1;
+// Logical width follows the screen: 480 on 3:2, up to 720 (2.25:1) on wide phones; the world stays 480 wide, centred.
 function resize(){
   const wrap=document.getElementById('stage');const W=wrap.clientWidth,H=wrap.clientHeight;
-  let w=W,h=W*2/3;if(h>H){h=H;w=H*1.5;}
+  const LW=Math.max(480,Math.min(720,Math.floor(W/H*320/2)*2));C.VIEW.ext=(LW-480)/2;
+  let w=W,h=W*320/LW;if(h>H){h=H;w=H*LW/320;}
   canvas.style.width=Math.floor(w)+'px';canvas.style.height=Math.floor(h)+'px';
-  const dpr=window.devicePixelRatio||1;scale=Math.max(1,Math.round(w*dpr/480));canvas.width=480*scale;canvas.height=320*scale;
+  const dpr=window.devicePixelRatio||1;scale=Math.max(1,Math.round(h*dpr/320));canvas.width=LW*scale;canvas.height=320*scale;
 }
 window.addEventListener('resize',resize);resize();
-function toLogical(e){const r=canvas.getBoundingClientRect();return [(e.clientX-r.left)/r.width*480,(e.clientY-r.top)/r.height*320];}
+function toLogical(e){const r=canvas.getBoundingClientRect();return [(e.clientX-r.left)/r.width*C.VIEW.w-C.VIEW.ext,(e.clientY-r.top)/r.height*320];}
 canvas.addEventListener('pointerdown',e=>{e.preventDefault();Audio.unlock();try{canvas.setPointerCapture(e.pointerId);}catch{}const [x,y]=toLogical(e);Touch.began(e.pointerId,x,y);});
 canvas.addEventListener('pointermove',e=>{const [x,y]=toLogical(e);Touch.moved(e.pointerId,x,y);});
 canvas.addEventListener('pointerup',e=>{const [x,y]=toLogical(e);Touch.ended(e.pointerId,x,y);});
@@ -38,7 +40,7 @@ document.getElementById('sound').textContent=(()=>{try{return localStorage.getIt
 document.getElementById('fs').onclick=async()=>{const el=document.getElementById('stage');try{if(document.fullscreenElement)await document.exitFullscreen();else await (el.requestFullscreen?.()||el.webkitRequestFullscreen?.());}catch{}setTimeout(resize,200);};
 document.addEventListener('fullscreenchange',()=>setTimeout(resize,100));
 let last=performance.now();
-function frame(ts){const dt=Math.min(.1,Math.max(0,(ts-last)/1000));last=ts;Director.update(dt);ctx.setTransform(scale,0,0,scale,0,0);Director.draw(ctx);requestAnimationFrame(frame);}
+function frame(ts){const dt=Math.min(.1,Math.max(0,(ts-last)/1000));last=ts;Director.update(dt);ctx.setTransform(scale,0,0,scale,C.VIEW.ext*scale,0);Director.draw(ctx);requestAnimationFrame(frame);}
 const loading=new S.LoadingScene();
 (async()=>{
   // Images needed by the loading screen first

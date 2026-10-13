@@ -66,7 +66,7 @@ class AtlasNode extends Node{constructor(atlas,name,x,y,o={}){super(x,y);this.at
 class Label extends Node{constructor(font,str,x,y,align='center'){super(x,y);this.font=font;this.str=String(str);this.align=align;}
   get w(){return textWidth(this.font,this.str);}
   drawSelf(ctx){text(ctx,this.font,this.str,this.x,this.y,{align:this.align,alpha:this.opacity/255,scale:this.scale});}}
-class ColorLayer extends Node{constructor(r,g,b,a){super();this.color=[r,g,b];this.opacity=a;}drawSelf(ctx){ctx.fillStyle=`rgba(${this.color.join(',')},${this.opacity/255})`;ctx.fillRect(0,0,480,320);}}
+class ColorLayer extends Node{constructor(r,g,b,a){super();this.color=[r,g,b];this.opacity=a;}drawSelf(ctx){ctx.fillStyle=`rgba(${this.color.join(',')},${this.opacity/255})`;ctx.fillRect(-VIEW.ext,0,VIEW.w,320);}}
 class DrawNode extends Node{constructor(fn){super();this.fn=fn;}drawSelf(ctx){this.fn(ctx,this);}}
 // ---------- menus ----------
 const BTN='sprites_buttons_alpha.png',CON='sprites_conhud_alpha.png';
@@ -95,8 +95,16 @@ const Director={scene:null,stack:[],paused:false,ctx:null,
   push(s){this.stack.push(this.scene);this.scene=s;Touch.reset();s.enter?.();},
   pop(){const s=this.scene;s.exit?.();this.scene=this.stack.pop();Touch.reset();this.scene?.resume?.();},
   update(dt){if(this.scene&&!(this.paused&&this.scene.pausable))this.scene.update(dt);else this.scene?.updateWhilePaused?.(dt);},
-  draw(ctx){ctx.save();ctx.imageSmoothingEnabled=false;ctx.fillStyle='#000';ctx.fillRect(0,0,480,320);if(this.scene){ctx.save();if(this.scene.shake)ctx.translate(this.scene.shake[0],this.scene.shake[1]);this.scene.draw(ctx);ctx.restore();}ctx.restore();}
+  draw(ctx){const ext=VIEW.ext;ctx.save();ctx.imageSmoothingEnabled=false;ctx.fillStyle='#000';ctx.fillRect(-ext,0,480+2*ext,320);
+    if(this.scene){ctx.save();if(this.scene.shake)ctx.translate(this.scene.shake[0],this.scene.shake[1]);if(ext>0)this.drawWings(ctx,ext);this.scene.draw(ctx);ctx.restore();}ctx.restore();}
+  ,
+  // Wide screens (e.g. iPhone 16 Pro Max): the 480x320 world stays as it is; the side strips continue the scene's background.
+  drawWings(ctx,ext){const sc=this.scene;if(sc.wideBackground===false)return;const f=sc.params?.background??sc.children.find(c=>c instanceof Img)?.img;const im=IMG[f];if(!im)return;
+    const w=Math.min(ext,im.width);ctx.save();ctx.scale(-1,1);ctx.drawImage(im,0,0,w,im.height,0,0,w,im.height);ctx.drawImage(im,im.width-w,0,w,im.height,-480-w-(ext-w),0,w,im.height);ctx.restore();
+    if(ext>w){ctx.drawImage(im,0,0,1,im.height,-ext,0,ext-w,im.height);ctx.drawImage(im,im.width-1,0,1,im.height,480+w,0,ext-w,im.height);}}
 };
+// Visible logical area: x from -ext to 480+ext (ext=0 on 3:2 screens).
+const VIEW={ext:0,get w(){return 480+2*this.ext;}};
 class Scene extends Node{constructor(){super();}}
 // ---------- touch ----------
 function allMenus(root){const out=[];const walk=n=>{if(!n.visible&&n.blockWhenHidden===false)return;if(n instanceof Menu)out.push(n);for(const c of n.children)walk(c);};walk(root);return out.sort((a,b)=>b.seq-a.seq);}
@@ -126,10 +134,13 @@ const sfx=n=>Audio_.play(n);
 // ---------- storage ----------
 const Store={get(k,d=null){try{const v=localStorage.getItem('cc185-'+k);return v===null?d:JSON.parse(v);}catch{return d;}},set(k,v){try{localStorage.setItem('cc185-'+k,JSON.stringify(v));return true;}catch{return false;}},del(k){try{localStorage.removeItem('cc185-'+k);}catch{}}};
 // Common widgets
-const helpBanner=(y=155)=>new Img('help_banner.png',240,y);
+// Full-width banner: on wide screens its edge columns are stretched into the side strips.
+class Banner extends Img{drawSelf(ctx){super.drawSelf(ctx);const e=VIEW.ext,im=IMG[this.img];if(!e||!im||this.opacity<=0)return;const top=Math.floor(this.y-im.height/2);ctx.save();ctx.globalAlpha*=this.opacity/255;
+  ctx.scale(-1,1);ctx.drawImage(im,0,0,e,im.height,0,top,e,im.height);ctx.drawImage(im,im.width-e,0,e,im.height,-480-e,top,e,im.height);ctx.restore();}}
+const helpBanner=(y=155)=>new Banner('help_banner.png',240,y);
 const fadeLayer=()=>new ColorLayer(0,0,0,100);
 const BUTTONS={newGame:[0,0],mainMenu:[96,0],continue_:[0,48],back:[96,48],custom:[0,96],yes:[96,96],help:[0,144],no:[96,144],campaign:[384,0],quickPlay:[384,96],play:[192,192],start:[192,240],replay:[384,192],map:[384,288],attack:[192,384],del:[384,384],create:[480,384],finished:[672,0],lobby:[672,96],defaultUnits:[672,192],newPlayer:[192,288],accept:[192,336],aboutUs:[480,288],multi:[576,288],levelSelect:[672,288]};
 // selected variants (pre-darkened) located at fixed offsets
 const SEL={newGame:[192,0],mainMenu:[288,0],continue_:[192,48],back:[288,48],custom:[192,96],yes:[288,96],help:[192,144],no:[288,144],campaign:[384,48],quickPlay:[384,144],play:[288,192],start:[288,240],replay:[384,240],map:[384,336],attack:[288,384],del:[384,432],create:[480,432],finished:[672,48],lobby:[672,144],defaultUnits:[672,240],newPlayer:[288,288],accept:[288,336],aboutUs:[480,336],multi:[576,336],levelSelect:[672,336]};
 const btn=(key,x,y,cb,o)=>new Button(BTN,[...BUTTONS[key],96,48],[...SEL[key],96,48],x,y,cb,o);
-Object.assign(exports,{IMG,blit,sprite,frameRect,entry,drawEntry,FONTS,text,textWidth,Action,Delay,FadeTo,FadeIn,FadeOut,MoveTo,ScaleTo,Call,Seq,Node,Sprite,Img,AtlasNode,Label,ColorLayer,DrawNode,Button,TextItem,Menu,Director,Scene,Touch,Audio:Audio_,sfx,Store,helpBanner,fadeLayer,btn,BTN,CON,clamp});
+Object.assign(exports,{VIEW,Banner,IMG,blit,sprite,frameRect,entry,drawEntry,FONTS,text,textWidth,Action,Delay,FadeTo,FadeIn,FadeOut,MoveTo,ScaleTo,Call,Seq,Node,Sprite,Img,AtlasNode,Label,ColorLayer,DrawNode,Button,TextItem,Menu,Director,Scene,Touch,Audio:Audio_,sfx,Store,helpBanner,fadeLayer,btn,BTN,CON,clamp});

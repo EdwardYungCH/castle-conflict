@@ -90,7 +90,7 @@ class BattleScene extends Scene{
     this.add(m);
   }
   addHint(){
-    const L=new Node();this.hint=L;const els=[new Img('help_banner.png',240,155),new Label('white','You are the blue castle',240,125),new Label('tiny','Gather trees for resources.',240,145),new Label('tiny','Touch the buttons above to build units!',240,165),new Label('tiny','Destroy the red castle!',240,185)];
+    const L=new Node();this.hint=L;const els=[new C.Banner('help_banner.png',240,155),new Label('white','You are the blue castle',240,125),new Label('tiny','Gather trees for resources.',240,145),new Label('tiny','Touch the buttons above to build units!',240,165),new Label('tiny','Destroy the red castle!',240,185)];
     for(const e of els){e.opacity=0;e.run(C.FadeIn(.75));L.add(e);}
     L.visible=false;this.add(L,-2);
     this.after(5,()=>{const fade=this.schedule(dt=>{let done=false;for(const e of els){if(dt*255>e.opacity)done=true;e.opacity=Math.max(0,e.opacity-dt*255);}if(done){this.unschedule(fade);L.remove();this.hint=null;}},.016);});
@@ -174,10 +174,10 @@ class BattleScene extends Scene{
   update(dt){super.update(dt);for(const e of this.explosions)e.t+=dt;}
   drawSnow(ctx,b){
     const t=this.sceneTime,storm=b.blizzardOn(),fade=storm?Math.min(1,(b.time-(b.blizzard.until-6))/.8,(b.blizzard.until-b.time)/.8):0;
-    const n=(this.scn.snow?36:0)+Math.round(150*fade);ctx.save();ctx.fillStyle='#ffffff';
+    const n=(this.scn.snow?36:0)+Math.round(150*fade),VW=C.VIEW.w,VX=-C.VIEW.ext;ctx.save();ctx.fillStyle='#ffffff';
     for(let i=0;i<n;i++){const h=(i*2654435761)>>>0,sp=18+(h%23)+(i>=36?60*fade:0),wind=(i>=36?-90:-6)*(i>=36?fade:1);
-      const x=(((h%480)+wind*t+Math.sin(t*1.3+i)*6)%480+480)%480,y=((h>>>9)%320+sp*t)%320;ctx.globalAlpha=i%3?.85:.55;const sz=i%5===0?2:1;ctx.fillRect(Math.floor(x),Math.floor(y),sz,sz);}
-    if(fade>0){ctx.globalAlpha=.22*fade;ctx.fillRect(0,0,480,320);}
+      const x=VX+(((h%VW)+wind*t+Math.sin(t*1.3+i)*6)%VW+VW)%VW,y=((h>>>9)%320+sp*t)%320;ctx.globalAlpha=i%3?.85:.55;const sz=i%5===0?2:1;ctx.fillRect(Math.floor(x),Math.floor(y),sz,sz);}
+    if(fade>0){ctx.globalAlpha=.22*fade;ctx.fillRect(VX,0,VW,320);}
     ctx.restore();
   }
   updateWhilePaused(){}
