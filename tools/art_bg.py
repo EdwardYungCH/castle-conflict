@@ -129,3 +129,44 @@ def build_all():
         im = Image.open(os.path.join(A, src))
         out = snowify(im) if kind == 'snow' else aurora(im, i) if kind == 'aurora' else dusk(im) if kind == 'dusk' else aurora_overlay(im)
         out.convert('RGB').save(os.path.join(A, dst), optimize=True)
+
+# ---------------------------------------------------------------- Eastern Realm
+def hsv_map(im, fn):
+    """fn(h,s,v,x,y) -> (h,s,v) applied per pixel (vectorised via numpy)."""
+    a = np.asarray(im.convert('RGBA')).astype(np.float32) / 255; rgb = a[..., :3]; H, W = rgb.shape[:2]
+    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]; mx = rgb.max(-1); mn = rgb.min(-1); d = np.maximum(mx - mn, 1e-6)
+    h = np.where(mx == r, ((g - b) / d) % 6, np.where(mx == g, (b - r) / d + 2, (r - g) / d + 4)) / 6
+    s = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0); v = mx
+    yy = np.repeat(np.arange(H)[:, None], W, 1); xx = np.repeat(np.arange(W)[None, :], H, 0)
+    h2, s2, v2 = fn(h, s, v, xx, yy); h2 = h2 % 1; s2 = np.clip(s2, 0, 1); v2 = np.clip(v2, 0, 1)
+    i = np.floor(h2 * 6); f = h2 * 6 - i; p = v2 * (1 - s2); q = v2 * (1 - s2 * f); t = v2 * (1 - s2 * (1 - f)); i = i.astype(int) % 6
+    out = np.stack([np.choose(i, [v2, q, p, p, t, v2]), np.choose(i, [t, v2, v2, q, p, p]), np.choose(i, [p, p, t, v2, v2, q])], -1)
+    res = np.concatenate([out, a[..., 3:]], -1)
+    return Image.fromarray((res * 255).round().astype(np.uint8), 'RGBA')
+
+def east_bamboo(im):   # forest -> yellow-green bamboo, hazy sky
+    return hsv_map(im, lambda h, s, v, x, y: (np.where((h > .15) & (h < .45), h * .75 + .05, h), np.where((h > .15) & (h < .45), s * .85, s), np.where((h > .5) & (h < .65) & (s < .4), v * .98, v * 1.05)))
+def east_terrace(im):  # grass hills -> bright paddies
+    return hsv_map(im, lambda h, s, v, x, y: (np.where((h > .15) & (h < .45), h * .8 + .03, h), np.where((h > .15) & (h < .45), s * 1.1, s), v))
+def east_volcano(im):  # mountains -> ash-grey rock with lava on the snow lines, hazy sky
+    def f(h, s, v, x, y):
+        sky = (h > .5) & (h < .65) & (s < .45) & (y < 260) & (v > .8); rock = (s < .4) & (y < 250) & ~sky; lava = rock & (v > .96) & (y < 75)
+        h = np.where(lava, .05, np.where(rock, .02, np.where(sky, .09, h))); s = np.where(lava, .95, np.where(rock, .12, np.where(sky, .22, s)))
+        v = np.where(lava, .95, np.where(rock, .18 + v * .3, np.where(sky, .62 + .3 * (y / 260), v)))
+        return h, s, v
+    return hsv_map(im, f)
+def east_coast(im):    # beach forest -> teal sea, jade hills
+    return hsv_map(im, lambda h, s, v, x, y: (np.where((h > .5) & (h < .62) & (s > .35), h - .07, np.where((h > .15) & (h < .45), h * .85 + .03, h)), s, v))
+def east_blossom(im):  # sunset forest -> cherry blossom
+    return hsv_map(im, lambda h, s, v, x, y: (np.where((h > .6) & (h < .85), .93, np.where((h < .1) | (h > .9), .95, h)), np.where((h > .6) & (h < .85), .35 + .3 * s, s * .8), np.where((h > .6) & (h < .85), .6 + .4 * v, v)))
+def east_night(im):    # mountain sunset -> violet dusk with lanterns-ish warmth kept
+    return hsv_map(im, lambda h, s, v, x, y: (np.where((h < .12) | (h > .9), h + .75, h), s * .9, v * .85))
+
+EAST_BG = {'bg_east_bamboo.png': ('bg_forest1.png', east_bamboo), 'bg_east_bamboo2.png': ('bg_forestsunset.png', east_blossom),
+           'bg_east_terrace.png': ('bg_grass.png', east_terrace), 'bg_east_terrace2.png': ('bg_grass2.png', east_terrace), 'bg_east_plains.png': ('bg_plains.png', east_terrace),
+           'bg_east_volcano.png': ('bg_mountains.png', east_volcano), 'bg_east_volcano2.png': ('bg_mountainsunset.png', east_night),
+           'bg_east_coast.png': ('bg_beachforest.png', east_coast), 'bg_east_sea.png': ('bg_water3.png', east_coast), 'bg_east_river.png': ('bg_river.png', east_terrace),
+           'bg_east_sunset.png': ('bg_watersunset.png', east_night),
+           'east_victory.png': ('victory.png', east_blossom), 'east_victory_night.png': ('victory_night.png', lambda im: hsv_map(im, lambda h, s, v, x, y: (h + .09, s, v)))}
+def build_east():
+    for dst, (src, fn) in EAST_BG.items(): fn(Image.open(os.path.join(A, src))).convert('RGB').save(os.path.join(A, dst), optimize=True)

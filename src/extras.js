@@ -64,15 +64,16 @@ class RecordsScene extends Scene{
 }
 
 // ---------- Endless mode ----------
-const WAVE_POOL=['wood','soldier','strong','dog','thief','cavalry','zeppelin','archer','pike','petard','heavy','bomber','golem','ice','fire','ram','master','mummy','necro','cannon','grappler','wolves','berserker','napalm','giant','longship','rune','wormPriest'];
+const WAVE_POOL=['wood','soldier','strong','dog','thief','cavalry','zeppelin','archer','pike','petard','heavy','bomber','golem','ice','fire','ram','master','mummy','necro','cannon','grappler','wolves','berserker','napalm','giant','longship','rune','wormPriest','ninja','samurai','dancer','caster','trebuchet'];
 const BGS=[['bg_grass.png','bg_forest1.png','bg_plains.png','bg_river.png','bg_mountains.png','bg_water2.png','bg_sunset.png'],
  ['bg_egypt_desert1.png','bg_egypt_nile2.png','bg_egypt_grass1.png','bg_egypt_desert4.png','bg_egypt_sunset1.png','bg_egypt_night1.png'],
- ['bg_north_hills.png','bg_north_forest.png','bg_north_fjord.png','bg_north_mountains.png','bg_north_aurora.png','bg_north_aurora_peaks.png']];
+ ['bg_north_hills.png','bg_north_forest.png','bg_north_fjord.png','bg_north_mountains.png','bg_north_aurora.png','bg_north_aurora_peaks.png'],
+ ['bg_east_bamboo.png','bg_east_terrace.png','bg_east_coast.png','bg_east_volcano.png','bg_east_bamboo2.png','bg_east_sunset.png']];
 function waveDef(w){
   const n=Math.min(WAVE_POOL.length,3+Math.floor((w-1)*1.5));let pool=WAVE_POOL.slice(0,n);
   const roster=['wood',...pool.filter(t=>t!=='wood').slice(-7)];
-  const realm=w<=6?0:w<=12?1:2;
-  return {roster,hp:Math.min(400,60+25*w),gold:15+5*w,aiFrequency:Math.max(.45,2.6-.17*w),campaignDifficulty:w<4?0:w<9?1:2,realm,background:BGS[realm][(w-1)%BGS[realm].length],skin:[0,1,3][realm]};
+  const realm=w<=6?0:w<=12?1:w<=18?2:3;
+  return {roster,hp:Math.min(400,60+25*w),gold:15+5*w,aiFrequency:Math.max(.45,2.6-.17*w),campaignDifficulty:w<4?0:w<9?1:2,realm,background:BGS[realm][(w-1)%BGS[realm].length],skin:[0,1,3,4][realm]};
 }
 function endlessParams(settings=D.Settings.load()){
   const wd=waveDef(1);

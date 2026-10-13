@@ -1,0 +1,204 @@
+"""Eastern Realm art: map castle icons, castle skin, new unit sprites, HUD icons, fx."""
+import os, sys, math, random
+from PIL import Image
+import numpy as np
+sys.path.insert(0, os.path.dirname(__file__))
+from pix import *
+import art_north as N
+from art_north import frames, BLUE, RED, O, team_colour, interior_mask, unit_icon
+A = os.path.join(os.path.dirname(__file__), '..', 'assets')
+
+# ---------------------------------------------------------------- castles
+def east_castle(im):
+    """Stone -> cream plaster with dark beams; blue/orange roofs -> dark tiles with a red ridge."""
+    def fn(r, g, b, a):
+        if (r, g, b) == O[:3]: return None
+        h, s, v = hsv(r, g, b)
+        if s < 0.28: return from_hsv(0.1, 0.18, min(1, 0.45 + v * 0.6), a)            # plaster
+        if 0.5 < h < 0.7 and s > 0.3: return from_hsv(0.6, 0.25, 0.25 + v * 0.35, a)   # blue roofs -> slate tiles
+        if h < 0.12 and s > 0.4 and v > 0.5: return from_hsv(0.0, 0.75, 0.35 + v * 0.4, a)  # orange roof -> lacquer red
+        return None
+    return recolor(im, fn)
+
+def castle_skin():
+    src = Image.open(os.path.join(A, 'spr_castles_alpha.png')).convert('RGBA')
+    east_castle(src).save(os.path.join(A, 'spr_east_castles_alpha.png'))
+
+def map_icons():
+    src = Image.open(os.path.join(A, 'mapcastles_alpha.png')).convert('RGBA')
+    out = src.copy(); px = out.load()
+    for y in range(0, 240):          # castle rows: give every tower a dark tile roof by darkening top highlights
+        for x in range(0, 320):
+            r, g, b, a = px[x, y]
+            if a and (r, g, b) != O[:3]:
+                h, s, v = hsv(r, g, b)
+                if v > 0.85 and s < 0.5: px[x, y] = from_hsv(h, s * 0.5, 0.35, a)
+    out.save(os.path.join(A, 'east_mapcastles_alpha.png'))
+
+# ---------------------------------------------------------------- units
+BLACK1, BLACK2 = (58, 58, 72, 255), (40, 40, 52, 255)
+REDL, REDD = (200, 48, 48, 255), (140, 30, 30, 255)
+GOLD = (236, 190, 60, 255)
+PINK1, PINK2 = (245, 170, 200, 255), (210, 110, 150, 255)
+WHITE1, WHITE2 = (248, 246, 240, 255), (205, 200, 190, 255)
+
+def ninja_frame(f):
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if s < 0.3: p[x, y] = BLACK1 if v > 0.5 else BLACK2      # grey hood/suit -> black
+            elif 0.5 < h < 0.7: p[x, y] = BLACK1                      # blue trim -> black
+    # red headband across the eyes row
+    for x in range(W):
+        if p[x, 5][3] and p[x, 5][:3] != O[:3]: p[x, 5] = REDL
+    return f
+
+def samurai_frame(f):
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if 0.5 < h < 0.7 and s > 0.3: p[x, y] = REDL if v > 0.6 else REDD    # blue tunic -> red armour
+            elif s < 0.3 and y < 10: p[x, y] = BLACK1 if v > 0.5 else BLACK2     # helmet -> black lacquer
+            elif 0.4 < h < 0.5: p[x, y] = GOLD                                   # plume -> gold crest
+    return f
+
+def dancer_frame(f):
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if s < 0.25 and y >= 11: p[x, y] = PINK1 if v > 0.7 else PINK2
+            elif 0.5 < h < 0.7 and s > 0.3: p[x, y] = PINK2
+    return f
+
+FAN = from_rows(['..OOO..', '.OGGGO.', 'OGRGRGO', 'OGGGGGO', '.OGRGO.', '..OGO..', '...O...'], {'O': O, 'G': GOLD, 'R': REDL})
+def dancer_with_fan(f):
+    f = dancer_frame(f); f.alpha_composite(FAN, (f.width - 7, 14)); return f
+
+def crane_caster_frame(f):
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if 0.5 < h < 0.7 and s > 0.3: p[x, y] = WHITE1 if v > 0.6 else WHITE2   # blue hat/robe -> white
+            elif s < 0.3 and v > 0.5: p[x, y] = REDL                                 # grey beard/trim -> red sash
+    return f
+
+CRANE = [from_rows(['..W....', 'OWWWW..', '.WWWWWO', '..WW...'], {'O': O, 'W': WHITE1}),
+         from_rows(['.......', 'OWWWW..', '.WWWWWO', '..W....'], {'O': O, 'W': WHITE1}),
+         from_rows(['..W....', '.WWWW..', 'OWWWWWO', '.......'], {'O': O, 'W': WHITE1})]
+
+WOOD1, WOOD2 = (150, 92, 50, 255), (92, 52, 30, 255)
+def trebuchet_frame(f, k, team):
+    """Battering ram crew carrying a trebuchet: A-frame on the log, arm angle changes with the walk frame."""
+    f = f.copy(); p = f.load(); W, H = f.size; y0, y1 = 20, 27
+    for y in range(y0 - 2, min(H, y1 + 2)):      # base beam over the log
+        for x in range(4, W - 4): p[x, y] = WOOD1 if y < y1 else WOOD2
+        p[4, y] = O; p[W - 5, y] = O
+    cx = W // 2
+    for i in range(10):                            # A-frame
+        for dx in (-i, -i + 1, i, i + 1):
+            X, Y = cx + dx, y0 - 2 - (9 - i)
+            if 0 <= X < W and 0 <= Y < H: p[X, Y] = WOOD2 if i % 3 == 0 else WOOD1
+    ang = [-0.9, -0.6, -0.9, -1.2][k % 4]          # arm
+    for t in range(16):
+        X = round(cx + math.cos(ang) * t); Y = round(y0 - 11 - math.sin(-ang) * t)
+        if 0 <= X < W and 0 <= Y < H: p[X, Y] = WOOD1
+    X = round(cx + math.cos(ang) * 16); Y = round(y0 - 11 - math.sin(-ang) * 16)   # sling stone
+    for dx, dy in ((0, 0), (1, 0), (0, 1), (1, 1)):
+        if 0 <= X + dx < W and 0 <= Y + dy < H: p[X + dx, Y + dy] = (120, 120, 130, 255)
+    for dx in (-3, 3):                              # counterweight box at the pivot's back
+        pass
+    for x in range(cx - 4, cx - 1):
+        for y in range(y0 - 8, y0 - 4): p[x, y] = team
+    return outline(f)
+
+def unit_sheet(src):
+    team = team_colour(src)
+    out = Image.new('RGBA', (256, 176), (0, 0, 0, 0))
+    def row(fs, x, y):
+        for i, fr in enumerate(fs): out.alpha_composite(fr, (x + i * fr.width, y))
+    row([ninja_frame(f) for f in frames(src, 0, 72, 16, 24, 4)], 0, 0)          # Ninja walk (0,0)
+    row([ninja_frame(f) for f in frames(src, 0, 96, 16, 24, 4)], 64, 0)         # Ninja carry (64,0)
+    row([samurai_frame(f) for f in frames(src, 0, 192, 16, 32, 4)], 0, 24)      # Samurai walk (0,24)
+    row([samurai_frame(f) for f in frames(src, 0, 224, 16, 32, 3)], 64, 24)     # Samurai attack (64,24)
+    row([dancer_frame(f) for f in frames(src, 128, 128, 16, 40, 4)], 0, 56)     # Dancer walk (0,56)
+    row([dancer_with_fan(f) for f in frames(src, 192, 128, 16, 40, 1)], 64, 56) # Dancer bless (64,56)
+    row([dancer_frame(f) for f in frames(src, 208, 128, 16, 40, 4)], 80, 56)    # Dancer return (80,56)
+    row([dancer_with_fan(f) for f in frames(src, 272, 128, 16, 40, 1)], 144, 56)# Dancer pray (144,56)
+    row([crane_caster_frame(f) for f in frames(src, 128, 168, 16, 36, 4)], 0, 96)   # Caster walk (0,96)
+    row([crane_caster_frame(f) for f in frames(src, 192, 168, 32, 36, 1)], 64, 96)  # Caster attack (64,96)
+    row([crane_caster_frame(f) for f in frames(src, 224, 168, 16, 36, 4)], 96, 96)  # Caster return (96,96)
+    row(CRANE, 160, 96)                                                           # Crane 3 frames 7x4 at (160,96)
+    row([trebuchet_frame(f, k, team) for k, f in enumerate(frames(src, 0, 416, 48, 32, 4))], 0, 136)  # Trebuchet (0,136) 48x32 x4
+    return out
+
+def units():
+    unit_sheet(BLUE).save(os.path.join(A, 'spr_east_blue_alpha.png'))
+    unit_sheet(RED).save(os.path.join(A, 'spr_east_red_alpha.png'))
+
+# ---------------------------------------------------------------- fx: bridge, fog icon, bridge icon, dojo
+def bridge(w=72, h=12, broken=False):
+    im = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    for x in range(w):
+        if broken and 26 < x < 46: continue
+        rect(im, x, 3, x, h - 2, WOOD1 if (x // 4) % 2 else WOOD2)
+    rect(im, 0, 2, w - 1, 2, (190, 130, 70, 255))
+    for x in range(0, w, 12):
+        if not (broken and 24 < x < 48): rect(im, x, 0, x + 1, h - 1, WOOD2)
+    return outline(im)
+
+def fog_icon():
+    im = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    for cx, cy, r in ((5, 9, 4), (9, 7, 5), (12, 10, 3)): disc(im, cx, cy, r, (225, 228, 235, 255))
+    return outline(im)
+
+def bridge_icon():
+    im = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    rect(im, 1, 8, 14, 10, WOOD1); rect(im, 1, 11, 14, 11, WOOD2)
+    for x in (2, 7, 12): rect(im, x, 5, x, 12, WOOD2)
+    return outline(im)
+
+def dojo():
+    im = Image.new('RGBA', (22, 16), (0, 0, 0, 0))
+    for y in range(0, 6):
+        for x in range(2 + (5 - y) * 2 - 4, 20 - (5 - y) * 2 + 4):
+            if 0 <= x < 22: put(im, x, y, (70, 70, 90, 255) if y < 5 else REDL)
+    rect(im, 3, 6, 18, 15, (235, 225, 200, 255)); rect(im, 3, 6, 18, 6, WOOD2)
+    for x in (5, 10, 15): rect(im, x, 7, x, 15, WOOD2)
+    rect(im, 9, 11, 12, 15, WOOD2)
+    return outline(im)
+
+def fx_sheet():
+    out = Image.new('RGBA', (160, 48), (0, 0, 0, 0))
+    out.alpha_composite(bridge(), (0, 0)); out.alpha_composite(bridge(broken=True), (0, 14))
+    out.alpha_composite(fog_icon(), (80, 0)); out.alpha_composite(bridge_icon(), (96, 0)); out.alpha_composite(dojo(), (112, 0))
+    out.save(os.path.join(A, 'spr_east_fx_alpha.png'))
+
+def register_icons():
+    import art_hud as H, art_upgrades as U
+    def dj(h, sel, side):
+        ic = U.icon_base(h, sel); ic.alpha_composite(dojo(), (22, 20)); return ic
+    H.register((0, 1), dj)
+    S = lambda side: Image.open(os.path.join(A, 'spr_east_blue_alpha.png' if side == 0 else 'spr_east_red_alpha.png')).convert('RGBA')
+    H.register((1, 1), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 0, 16, 20), 2, (0, 2)))      # ninja
+    H.register((2, 1), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 24, 16, 22), 2, (0, 4)))     # samurai
+    H.register((3, 1), lambda h, sel, side: unit_icon(h, sel, S(side), (2, 138, 44, 30), 1, (0, 2)))    # trebuchet
+    H.register((4, 1), lambda h, sel, side: unit_icon(h, sel, S(side), (64, 62, 16, 21), 2, (0, 2)))    # dancer
+    H.register((5, 1), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 100, 16, 22), 2, (0, 2)))    # crane caster
+
+def build():
+    castle_skin(); map_icons(); units(); fx_sheet()
+
+if __name__ == '__main__':
+    build(); print('east ok')

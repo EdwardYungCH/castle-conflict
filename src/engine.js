@@ -11,7 +11,7 @@ const AIR_Y=130; // cocos 190
 const GROUND_START=[80,384],AIR_START=[40,424];
 const CASTLE_BOXES=[[[0,191,72,287],[0,95,48,191]],[[408,191,480,287],[440,95,480,191]]];
 const spriteHeight=type=>UNITS[type].frameHeight??ATLASES.playerStandard.entries[UNITS[type].sprite]?.Height??16;
-const unitY=u=>UNITS[u.type].flies?AIR_Y:ground(Math.trunc(u.x))-spriteHeight(u.type)/2;
+const unitY=u=>UNITS[u.type].flies?(u.craneY??AIR_Y):ground(Math.trunc(u.x))-spriteHeight(u.type)/2;
 function unitBounds(u){
   const [w,h]=UNITS[u.type].collision??[8,12];let box=UNIT_GEOMETRY[u.type]??[-w,-h,w,h];
   if(u.type==='worm')box=[-(u.hitWidth??24),-50,u.hitWidth??24,30];
@@ -68,9 +68,16 @@ const UNITS=Object.freeze({
   giant:{id:38,name:'Frost Giant',cost:70,speed:18,cs:4,strength:6,projectileResistance:1,role:'fighter',sprite:'FrostGiant',hud:[240,384],attackFps:5,iceWalker:true},
   rune:{id:39,name:'Rune Priest',cost:45,speed:40,cs:0,strength:0,role:'support',sprite:'RunePriest',hud:[288,384]},
   longship:{id:40,name:'Dragon Longship',cost:60,speed:45,cs:2,strength:3,role:'fighter',sprite:'Longship',hud:[336,384],walkFps:10,crew:'soldier',iceWalker:true},
+  // Eastern Realm (fan expansion)
+  ninja:{id:42,name:'Ninja',cost:25,speed:65,cs:0,strength:1,role:'thief',sprite:'Ninja',hud:[48,432],walkFps:10,stealth:true,steal:20},
+  samurai:{id:43,name:'Samurai',cost:45,speed:45,cs:2,strength:3,role:'fighter',sprite:'Samurai',hud:[96,432],cleave:true},
+  trebuchet:{id:44,name:'Trebuchet',cost:65,speed:30,cs:0,strength:0,role:'siege',sprite:'Trebuchet',hud:[144,432],walkFps:10,fireEvery:3,firingX:[150,330]},
+  dancer:{id:45,name:'Fan Dancer',cost:40,speed:40,cs:0,strength:0,role:'support',sprite:'FanDancer',hud:[192,432]},
+  caster:{id:46,name:'Crane Caster',cost:50,speed:40,cs:0,strength:0,role:'mage',sprite:'CraneCaster',hud:[240,432],attackFps:1/.016},
+  crane:{id:47,name:'Paper Crane',cost:0,speed:28,cs:0,strength:0,flies:true,role:'air',sprite:'PaperCrane',hud:[240,432],internal:true,collision:[6,4],height:8,deathPower:0,catcher:true},
   unicorn:{id:100000,name:'Ultimate Pink Unicorn',cost:0,speed:140,cs:300,strength:300,mountedStrength:300,projectileResistance:100,role:'fighter',sprite:'Unicorn',hud:[0,0],internal:true,frameHeight:48,collision:[32,24]}
 });
-const UNIT_KEYS={};for(const [type,u] of Object.entries(UNITS))if(!u.internal||type==='mummyBody'||type==='worm'||type==='engineer')UNIT_KEYS[u.id]=type;
+const UNIT_KEYS={};for(const [type,u] of Object.entries(UNITS))if(!u.internal||['mummyBody','worm','engineer','wolf','crane'].includes(type))UNIT_KEYS[u.id]=type;
 const TYPE_ID=type=>UNITS[type]?.id;
 const QUICK_ARMY=['wood','thief','soldier','strong','cavalry','zeppelin','bomber','cannon'];
 const DEFAULT_ROSTER=['wood','soldier','strong'];
@@ -85,7 +92,8 @@ for(const [id,ca,un,mo,sp,co,f] of [
  [23,0,0,0,50,15,'flying proj util off:20'],[24,2,2,2,30,45,'off:15'],[25,1,1,1,25,0,''],[26,0,0,0,30,50,'util off:40'],
  [27,0,0,0,40,35,'util off:45'],[28,0,0,0,40,30,'util off:40'],[29,0,0,0,30,60,'proj t:7 util off:200'],[30,2,2,2,60,35,'flying'],
  [31,0,0,0,25,15,'flying wood:50'],[32,2,0,0,25,55,'flying util off:40'],[33,4,4,4,35,70,'flying t:4'],[34,0,0,0,30,20,'flying util off:30'],[35,8,8,8,0,60,''],
- [36,2,2.5,2.5,55,40,''],[37,1.5,.75,.75,120,35,'off:10'],[38,4,6,6,18,70,''],[39,0,0,0,40,45,'util off:35'],[40,4,3,3,45,60,'off:15'],[41,.5,.75,.75,120,0,'']]){
+ [36,2,2.5,2.5,55,40,''],[37,1.5,.75,.75,120,35,'off:10'],[38,4,6,6,18,70,''],[39,0,0,0,40,45,'util off:35'],[40,4,3,3,45,60,'off:15'],[41,.5,.75,.75,120,0,''],
+ [42,0,1,1,65,25,'steals off:10'],[43,2,3,3,45,45,''],[44,2,0,0,30,65,'proj t:4 util off:30'],[45,0,0,0,40,40,'util off:35'],[46,0,0,0,40,50,'util off:40'],[47,0,0,0,28,0,'flying']]){
   const flag=k=>{const m=f.split(' ').find(s=>s.startsWith(k));return m?(m.includes(':')?Number(m.split(':')[1]):true):false;};
   INFO[id]={id,castleAttack:ca,unmounted:un,mounted:mo,speed:sp,cost:co,mountedUnit:!!flag('mounted'),flying:!!flag('flying'),collectsWood:!!flag('wood'),carryingValue:flag('wood')||0,steals:!!flag('steals'),launchesProjectile:!!flag('proj'),timeUntilProjectile:flag('t')||0,utilityUnit:!!flag('util'),utilityPerUnit:flag('per')||0,utilityOffset:flag('off')||0,alwaysWinsOnce:!!flag('once'),suicideBomber:!!flag('suicide')};
 }
@@ -112,6 +120,9 @@ class Battle{
     // Northern hazards: blizzard (element 3) and thin ice (element 4)
     this.blizzard=this.cfg.blizzard?{next:12+this.randInt(8),until:-1}:null;
     this.thinIce=this.cfg.thinIce?{x0:204,x1:276,hole:null}:null;
+    // Eastern hazards: fog (element 5) and the drawbridge (element 6)
+    this.fog=this.cfg.fog?{next:this.cfg.alwaysFog?0:10+this.randInt(8),until:this.cfg.alwaysFog?Infinity:-1,x0:150,x1:330}:null;
+    this.bridge=this.cfg.bridge?{x0:204,x1:276,hp:3,broken:false,rebuildAt:null}:null;
     this.aiFrequency=aiFrequency??([4,1.5,.3][difficulty]??1.5);this.aiTimer=[0,0];
   }
   random(){this.seed=(1664525*this.seed+1013904223)>>>0;return this.seed/4294967296;}
@@ -137,7 +148,9 @@ class Battle{
     u.speedBuffer=1;
     if(type==='fire'||type==='ice')u.spellAt=position.spellAt??(this.time+(type==='fire'?.5:.25)+this.random());
     if(type==='witch')u.catAt=this.time+1;
-    if(def.role==='support'){u.stopAt=this.time+(type==='necro'?.25:type==='wormPriest'?1.3:type==='rune'?.6:.5);if(type==='necro'){u.soulsLeft=3;u.reviveList=[];}}
+    if(type==='caster')u.spellAt=position.spellAt??(this.time+.6+this.random());
+    if(def.stealth)u.stealth=true;
+    if(def.role==='support'){u.stopAt=this.time+(type==='necro'?.25:type==='wormPriest'?1.3:type==='rune'||type==='dancer'?.6:.5);if(type==='necro'){u.soulsLeft=3;u.reviveList=[];}}
     if(type==='worm'){u.phase=position.phase??0;u.phaseAt=this.time;u.hidden=position.hidden??true;}
     this.units.push(u);
     for(const p of this.units)if(p!==u&&p.alive&&p.side===side&&p.praying&&p.type==='wind'){u.speedBuffer=Math.max(.25,Math.min(1.75,u.speedBuffer*1.25));u.badges=[...(u.badges||[]),'SpeedBadge'];p.blessUntil=this.time+.75;this.emit('bless',{side});}
@@ -146,7 +159,13 @@ class Battle{
   }
   start(){if(!this.winner){this.running=true;this.started=true;}}
   pause(){this.running=false;}
-  moveSpeed(u){const v=Math.trunc(u.speed*Math.max(.25,Math.min(1.75,u.speedBuffer??1)));return this.blizzardOn()&&!UNITS[u.type].flies&&u.type!=='giant'?Math.trunc(v*.5):v;}
+  moveSpeed(u){let v=Math.trunc(u.speed*Math.max(.25,Math.min(1.75,u.speedBuffer??1)));if(this.blizzardOn()&&!UNITS[u.type].flies&&u.type!=='giant')v=Math.trunc(v*.5);
+    if(this.bridge&&this.bridge.broken&&!UNITS[u.type].flies&&u.x>this.bridge.x0-8&&u.x<this.bridge.x1+8)v=Math.max(4,Math.trunc(v/3));return v;}
+  fogOn(){return !!this.fog&&this.time<this.fog.until;}
+  inFog(u){return this.fogOn()&&u.x>this.fog.x0&&u.x<this.fog.x1;}
+  updateFog(){const f=this.fog;if(!f||f.until===Infinity)return;if(this.time+1e-9>=f.next){f.until=this.time+8;f.next=this.time+8+12+this.randInt(10);this.emit('fog');}}
+  damageBridge(n=1){const b=this.bridge;if(!b||b.broken)return;b.hp-=n;this.emit('bridgeHit');if(b.hp<=0){b.broken=true;b.rebuildAt=this.time+15;this.emit('bridgeBreak');}}
+  updateBridge(){const b=this.bridge;if(!b||!b.broken)return;if(this.time+1e-9>=b.rebuildAt){b.broken=false;b.hp=3;b.rebuildAt=null;this.emit('bridgeFixed');}}
   blizzardOn(){return !!this.blizzard&&this.time<this.blizzard.until;}
   updateBlizzard(){const z=this.blizzard;if(!z)return;if(this.time+1e-9>=z.next){z.until=this.time+6;z.next=this.time+6+14+this.randInt(9);this.emit('blizzard',{duration:6});}}
   // Thin ice: heavy ground units may break through when they first step on it; an open hole swallows anyone.
@@ -172,7 +191,7 @@ class Battle{
   }
   deathAnim(u,large){this.skillEffects.push({id:this.nextId++,sprite:large?'DeathLargeAnimation':'DeathSmallAnimation',side:u.side,x:Math.trunc(u.x),y:unitY(u),anchor:'center',fps:1/.15,born:this.time,expires:this.time+.45,unitLayer:true});}
   addProjectile(type,side,x,y,vx,vy){
-    const properties={mummyFall:{power:0,radius:8,halfWidth:16,halfHeight:8,ground:true,gravity:true,sprite:'MummyBodyWalkAnimation',harmless:true,animationFps:5},unitDrop:{power:0,radius:16,halfWidth:16,halfHeight:24,ground:true,gravity:true,sprite:'StrongSoldierDrop',harmless:true},napalm:{power:1,radius:8,ground:true,gravity:true,sprite:'FallingNapalmAnimation',effectsTrees:true},fireball:{power:2,radius:8,ground:true,gravity:true,singleUse:true,sprite:'FireBallAnimation',followsGround:true},abandoned:{power:0,radius:16,ground:false,gravity:false,sprite:'PirateZeppelin',harmless:true,life:2},dust:{power:0,radius:8,ground:true,gravity:true,sprite:'DusterDustAnimation',harmless:true,effectsTrees:true},bomb:{power:1,radius:8,ground:true,gravity:true,sprite:'BomberBomb'},skyTree:{power:0,radius:16,ground:true,gravity:true,sprite:'treeGrowAnimation',scenery:true,harmless:true},wreck:{power:.5,radius:16,ground:true,gravity:true,sprite:'SmallZeppelin'},cannonball:{power:2,radius:8,ground:false,gravity:true,sprite:'CannonBall'},arrow:{power:1,radius:8,ground:true,gravity:false,singleUse:true,sprite:'ArcherArrow'},petard:{power:4,radius:32,ground:true,gravity:true,friendly:true,sprite:'ExplosionDefault'}}[type];
+    const properties={mummyFall:{power:0,radius:8,halfWidth:16,halfHeight:8,ground:true,gravity:true,sprite:'MummyBodyWalkAnimation',harmless:true,animationFps:5},unitDrop:{power:0,radius:16,halfWidth:16,halfHeight:24,ground:true,gravity:true,sprite:'StrongSoldierDrop',harmless:true},napalm:{power:1,radius:8,ground:true,gravity:true,sprite:'FallingNapalmAnimation',effectsTrees:true},fireball:{power:2,radius:8,ground:true,gravity:true,singleUse:true,sprite:'FireBallAnimation',followsGround:true},abandoned:{power:0,radius:16,ground:false,gravity:false,sprite:'PirateZeppelin',harmless:true,life:2},dust:{power:0,radius:8,ground:true,gravity:true,sprite:'DusterDustAnimation',harmless:true,effectsTrees:true},bomb:{power:1,radius:8,ground:true,gravity:true,sprite:'BomberBomb'},skyTree:{power:0,radius:16,ground:true,gravity:true,sprite:'treeGrowAnimation',scenery:true,harmless:true},wreck:{power:.5,radius:16,ground:true,gravity:true,sprite:'SmallZeppelin'},cannonball:{power:2,radius:8,ground:false,gravity:true,sprite:'CannonBall'},stone:{power:2,radius:8,ground:true,gravity:true,sprite:'CannonBall',singleUse:true},arrow:{power:1,radius:8,ground:true,gravity:false,singleUse:true,sprite:'ArcherArrow'},petard:{power:4,radius:32,ground:true,gravity:true,friendly:true,sprite:'ExplosionDefault'}}[type];
     const p={id:this.nextId++,type,side,x,y,vx,vy,born:this.time,alive:true,hits:[],friendly:false,singleUse:false,...properties};this.projectiles.push(p);return p;
   }
   fallAirship(u){
@@ -197,7 +216,7 @@ class Battle{
     this.emit('unitHitEnemy',{side:u.side,unitType:u.type,flies:!!UNITS[u.type].flies,castleStrength:cs});
     s.hp=Math.max(-9999,cs===0?s.hp-1:Math.trunc(s.hp-cs*10));
     this.emit('castleHit',{side:enemy});
-    if(['soldier','strong','cavalry','heavy','dog','golem','ram','mummy','mummyBody','unicorn','berserker','wolf','giant'].includes(u.type))this.attackEffects.push({...u,state:'attack',attackStarted:this.time,expires:this.time+(UNITS[u.type].attackDuration??.3)});
+    if(['soldier','strong','cavalry','heavy','dog','golem','ram','mummy','mummyBody','unicorn','berserker','wolf','giant','samurai'].includes(u.type))this.attackEffects.push({...u,state:'attack',attackStarted:this.time,expires:this.time+(UNITS[u.type].attackDuration??.3)});
     this.kill(u,'castle');
   }
   // Ground pickupTrees units (woodcutters, archers): walk forward, take the first ready tree they overlap.
@@ -220,6 +239,7 @@ class Battle{
   }
   fly(u,dt){
     const def=UNITS[u.type],dir=u.side===0?1:-1;
+    if(u.type==='crane'){u.x+=dir*this.moveSpeed(u)*dt;if(touchesCastle(u,1-u.side))u.alive=false;return;}
     if(!['planter','duster','treeCutter','soldierDrop','woodDrop'].includes(u.type)&&this.time>=u.soundAt){u.soundAt=this.time+.2;this.emit('blimp',{side:u.side,unitType:u.type});}
     if(u.dropAt!==null&&u.dropAt<=this.time+1e-9){
       u.dropAt+=def.dropInterval;
@@ -234,9 +254,10 @@ class Battle{
   wizard(u,dt){
     const dir=u.side===0?1:-1;
     if(u.returning){u.state='return';u.facing=-dir;u.x-=dir*this.moveSpeed(u)*dt;if(touchesCastle(u,u.side))u.alive=false;return;}
-    if(u.spellAt&&this.time+1e-9>=u.spellAt){u.spellAt=null;u.state='attack';u.attackStarted=this.time;u.castTimer=nativeTimer(u.type==='fire'?.25:1);u.homeTimer=nativeTimer(u.type==='fire'?1.25:1.5);if(u.type==='ice'){this.effect('IceEffectAnimation',u.side,u.x+dir*5,unitY(u)+6,1/.15);this.emit('ice',{side:u.side,phase:'cast'});}return;}
+    if(u.spellAt&&this.time+1e-9>=u.spellAt){u.spellAt=null;u.state='attack';u.attackStarted=this.time;u.castTimer=nativeTimer(u.type==='fire'?.25:u.type==='caster'?.4:1);u.homeTimer=nativeTimer(u.type==='fire'?1.25:1.5);if(u.type==='ice'){this.effect('IceEffectAnimation',u.side,u.x+dir*5,unitY(u)+6,1/.15);this.emit('ice',{side:u.side,phase:'cast'});}return;}
     if(u.castTimer&&fireNativeTimer(u.castTimer,dt)){
       if(u.type==='fire'){const vy=this.randInt(15)*(this.random()<.5?-1:1);this.addProjectile('fireball',u.side,u.x+dir*12,unitY(u)-8,dir*120,vy);this.emit('fireball',{side:u.side});}
+      else if(u.type==='caster'){for(let k=0;k<3;k++){const c=this.createUnit(u.side,'crane',{x:u.x+dir*(6+10*k)});c.craneY=AIR_Y+20+14*k;c.suppressWreck=true;}this.emit('cranes',{side:u.side});u.castTimer=null;}
       else{const enemies=this.units.filter(v=>v.alive&&v.side!==u.side);for(const v of enemies)if((v.speedBuffer??1)>.32){v.speedBuffer=.32;v.frozen=true;this.effect('IceEffectAnimation',u.side,v.x,unitY(v)+16,1/.15);}if(enemies.length)this.emit('ice',{side:u.side,phase:'frost'});u.castTimer=null;}
     }
     if(u.homeTimer&&fireNativeTimer(u.homeTimer,dt)){u.returning=true;u.state='return';u.facing=-dir;u.castTimer=null;u.homeTimer=null;return;}
@@ -252,6 +273,9 @@ class Battle{
     if(u.stopAt&&this.time+1e-9>=u.stopAt){u.stopAt=null;u.praying=true;u.state=u.type==='necro'?'attack':'pray';u.attackStarted=this.time;
       if(u.type==='sword'){this.sides[u.side].tieScore++;for(const v of this.units)if(v.side===u.side&&UNITS[v.type].strength>0&&!(v.badges||[]).includes('TieBadge'))v.badges=[...(v.badges||[]),'TieBadge'];}
       if(u.type==='wormPriest'){u.ritualAt=this.time+7;u.shakeAt=this.time+2;u.secondShakeAt=this.time+4.5;}
+      if(u.type==='dancer'){u.blessUntil=this.time+.6;u.returnAt=this.time+.9;const back=u.side===0?1:-1;let n=0;
+        for(const v of this.units)if(v.alive&&v.side!==u.side&&UNITS[v.type].flies){v.x=Math.max(40,Math.min(440,v.x+back*100));n++;}
+        this.emit('wind',{side:u.side,hit:n});}
       if(u.type==='rune'){u.blessUntil=this.time+.6;u.returnAt=this.time+.9;let n=0;
         for(const v of this.units)if(v.alive&&v.side!==u.side&&!UNITS[v.type].flies&&!v.hidden&&v.type!=='worm'){v.frozenUntil=this.time+3;n++;this.effect('IceEffectAnimation',u.side,v.x,unitY(v)+16,1/.15);}
         this.emit('ice',{side:u.side,phase:n?'frost':'cast'});}}
@@ -307,7 +331,9 @@ class Battle{
       if(p.fallPerTick)p.vy+=p.fallPerTick;
       const px=p.x;p.x+=p.vx*dt;p.y+=p.vy*dt+(p.gravity?40*dt*dt:0);if(p.gravity)p.vy+=80*dt;if(p.followsGround)p.y+=ground(p.x)-ground(px);
       for(const u of this.units){
-        if(p.harmless||!u.alive||u.hidden||p.hits.includes(u.id)||(!p.friendly&&u.side===p.side)||p.ground===!!UNITS[u.type].flies)continue;
+        if(p.harmless||!u.alive||u.hidden||u.stealth||p.hits.includes(u.id)||(!p.friendly&&u.side===p.side))continue;
+        if(UNITS[u.type].catcher&&u.side!==p.side){const pw=p.halfWidth??p.radius,ph=p.halfHeight??p.radius;if(overlaps([p.x-pw,p.y-ph,p.x+pw,p.y+ph],unitBounds(u))){p.alive=false;u.alive=false;this.effect('ExplosionDefaultAnimation',u.side,u.x,unitY(u));this.emit('craneCatch',{side:u.side});break;}continue;}
+        if(p.ground===!!UNITS[u.type].flies)continue;
         if(u.side!==p.side&&p.power<=(UNITS[u.type].projectileResistance??0))continue;
         const pw=p.halfWidth??p.radius,ph=p.halfHeight??p.radius;if(!overlaps([p.x-pw,p.y-ph,p.x+pw,p.y+ph],unitBounds(u)))continue;
         p.hits.push(u.id);if(u.type==='grappler'&&p.type==='cannonball'){u.caughtCannonball=true;p.alive=false;}
@@ -322,7 +348,7 @@ class Battle{
       if(p.type==='skyTree'){if(p.y>=projectileGroundY(p))this.removeProjectile(p);continue;}
       const enemy=1-p.side,pw=p.halfWidth??p.radius,ph=p.halfHeight??p.radius;
       if(CASTLE_BOXES[enemy].some(b=>overlaps([p.x-pw,p.y-ph,p.x+pw,p.y+ph],b))){this.sides[enemy].hp=Math.trunc(this.sides[enemy].hp-p.power*10);this.emit('castleHit',{side:enemy});this.removeProjectile(p);continue;}
-      if((p.type!=='petard'&&p.y>projectileGroundY(p))||p.x<-64||p.x>544)this.removeProjectile(p);
+      if((p.type!=='petard'&&p.y>projectileGroundY(p))||p.x<-64||p.x>544){if(this.bridge&&p.power>=1&&p.x>this.bridge.x0-16&&p.x<this.bridge.x1+16&&p.y>projectileGroundY(p))this.damageBridge(p.power>=4?3:1);this.removeProjectile(p);}
     }
     this.projectiles=this.projectiles.filter(p=>p.alive);
   }
@@ -368,7 +394,7 @@ class Battle{
     const roster=this.rosters[side],me=this.sides[side];
     const create=type=>this.spawn(side,type,{ai:true});
     if(this.campaignDifficulty===0){do{const t=roster[this.randInt(roster.length)];if(create(t))return;}while(this.randInt(3)===0);return;}
-    const op=1-side,you=this.units.filter(u=>u.alive&&u.side===op&&!u.hidden),gold=me.wood,hp=me.hp;
+    const op=1-side,you=this.units.filter(u=>u.alive&&u.side===op&&!u.hidden&&!u.stealth&&!this.inFog(u)),gold=me.wood,hp=me.hp;
     const infoOf=u=>INFO[u.type==='ice'?12:TYPE_ID(u.type)]??INFO[0];
     let nothing=0;for(const u of you){const i=infoOf(u);nothing+=i.castleAttack*10*.5+(i.castleAttack>hp?100:0)+(i.steals?(gold>14?15:gold>5?40:15):0);}
     const tree=this.nearestTreeToAI(side),tall=this.tallTrees.find(t=>t.ready)??null,startG=GROUND_START[side],startA=AIR_START[side];
@@ -435,6 +461,7 @@ class Battle{
     const x=min+this.randInt(range);
     if(this.antlion&&x>192&&x<288)return;
     if(this.thinIce&&x>this.thinIce.x0-16&&x<this.thinIce.x1+16)return;
+    if(this.bridge&&x>this.bridge.x0-16&&x<this.bridge.x1+16)return;
     this.trees.push({id:this.treeId++,x,remaining:1,born:this.time});
   }
   tick(dt){
@@ -442,7 +469,7 @@ class Battle{
     this.skillEffects=this.skillEffects.filter(p=>p.expires>this.time);this.attackEffects=this.attackEffects.filter(u=>u.expires>this.time);this.projectileEffects=this.projectileEffects.filter(p=>p.expires>this.time);
     if(this.setupAt!==null&&this.time+1e-9>=this.setupAt){this.setupAt=null;for(const x of [168,312])this.trees.push({id:this.treeId++,x,remaining:1,born:this.time});if(this.easyQuick)for(const s of [0,1]){if(this.spawn(s,'wood',{ai:true}))this.sides[s].wood+=5;}}
     if(this.cfg.allowHeals){this.healTimer+=dt;while(this.healTimer+1e-9>=1){this.healTimer-=1;if(!this.healPickup&&this.random()<1/90){this.healPickup={x:240,y:ground(240)-8};this.emit('healSpawn');}}}
-    this.updateBlizzard();
+    this.updateBlizzard();this.updateFog();this.updateBridge();
     this.woodTimer+=dt;while(this.woodTimer+1e-9>=1){this.woodTimer-=1;for(const s of this.sides)s.wood++;this.emit('award');}
     for(const t of this.tallTrees)if(t.growAt!==null&&this.time+1e-9>=t.growAt+.55){t.ready=true;t.growAt=null;}
     const live=this.trees.filter(t=>t.remaining>0).length;
@@ -461,9 +488,15 @@ class Battle{
       if(u.type==='worm'){this.updateWorm(u);continue;}
       if(u.type==='witch')this.updateWitch(u);
       if(UNITS[u.type].role==='mage'){this.wizard(u,dt);continue;}
+      if(UNITS[u.type].role==='siege'){const d=u.side===0?1:-1,fx=UNITS[u.type].firingX[u.side];
+        if((d>0&&u.x<fx)||(d<0&&u.x>fx)){u.state='walk';u.facing=d;u.x+=d*this.moveSpeed(u)*dt;continue;}
+        u.state='walk';u.facing=d;if(u.fireAt===undefined)u.fireAt=this.time+1;
+        if(this.time+1e-9>=u.fireAt){u.fireAt=this.time+UNITS[u.type].fireEvery;const p=this.addProjectile('stone',u.side,u.x+d*10,unitY(u)-12,d*95,-118);p.halfWidth=6;p.halfHeight=6;this.emit('stone',{side:u.side});}
+        continue;}
       if(u.type==='petard'&&this.time>=u.fuseAt){u.fuseAt=this.time+.12;this.emit('fuse',{side:u.side});}
       if(u.shootAt&&u.shootAt<=this.time+1e-9){this.fireArrow(u);u.shootAt=null;}
       if(u.type==='ram'&&u.engageUntil>this.time){u.x+=(u.side===0?1:-1)*u.recoilSpeed*dt;continue;}
+      if(this.bridge&&!this.bridge.broken&&!u.bridgeHit&&['ram','giant','longship'].includes(u.type)&&u.x>this.bridge.x0&&u.x<this.bridge.x1){u.bridgeHit=true;this.damageBridge(1);}
       if(u.engageUntil>this.time)continue;
       if(['worker','archer'].includes(UNITS[u.type].role)){this.worker(u,dt);continue;}
       const dir=u.side===0?1:-1;
@@ -471,16 +504,16 @@ class Battle{
       u.state='walk';u.facing=dir;u.x+=dir*this.moveSpeed(u)*dt;
       if(touchesCastle(u,1-u.side)){
         const enemy=this.sides[1-u.side];
-        if(u.type==='thief'&&enemy.wood>0){const v=enemy.wood>14?15:enemy.wood;enemy.wood-=v;u.carrying=v;u.state='return';u.facing=-dir;u.whistleAt=this.time+1;this.emit('steal',{side:u.side,amount:v});this.showGold(1-u.side,-v,u.x,unitY(u));continue;}
+        if(UNITS[u.type].role==='thief'&&enemy.wood>0){const cap=UNITS[u.type].steal??15;const v=enemy.wood>cap-1?cap:enemy.wood;enemy.wood-=v;u.carrying=v;u.stealth=false;u.state='return';u.facing=-dir;u.whistleAt=this.time+1;this.emit('steal',{side:u.side,amount:v});this.showGold(1-u.side,-v,u.x,unitY(u));continue;}
         this.hitCastle(u);
       }
     }
     // Unit vs unit (checkUnitUnitCollision)
     const blue=this.units.filter(u=>u.alive&&u.side===0),red=this.units.filter(u=>u.alive&&u.side===1);
     for(const a of blue)for(const b of red){
-      if(!a.alive||!b.alive||a.ignoresCombat||b.ignoresCombat||a.hidden||b.hidden||a.capture||b.capture||!!UNITS[a.type].flies!==!!UNITS[b.type].flies||!overlaps(unitBounds(a),unitBounds(b)))continue;
+      if(!a.alive||!b.alive||a.ignoresCombat||b.ignoresCombat||a.hidden||b.hidden||a.capture||b.capture||(a.stealth&&!(b.carrying&&!a.carrying))||(b.stealth&&!(a.carrying&&!b.carrying))||!!UNITS[a.type].flies!==!!UNITS[b.type].flies||!overlaps(unitBounds(a),unitBounds(b)))continue;
       let stolen=false;
-      for(const [th,v] of [[a,b],[b,a]])if(th.type==='thief'&&!th.carrying&&v.carrying&&v.type!=='cash'){th.carrying=v.carrying;th.state='return';th.facing=th.side===0?-1:1;th.whistleAt=this.time+1;this.kill(v);this.sides[th.side].score.numUnitsKilled++;this.sides[v.side].score.numUnitsDied++;this.emit('steal',{side:th.side,amount:th.carrying});stolen=true;break;}
+      for(const [th,v] of [[a,b],[b,a]])if(UNITS[th.type].role==='thief'&&!th.carrying&&v.carrying&&v.type!=='cash'&&!v.stealth){th.carrying=v.carrying;th.stealth=false;th.state='return';th.facing=th.side===0?-1:1;th.whistleAt=this.time+1;this.kill(v);this.sides[th.side].score.numUnitsKilled++;this.sides[v.side].score.numUnitsDied++;this.emit('steal',{side:th.side,amount:th.carrying});stolen=true;break;}
       if(stolen)continue;
       const sA=this.power(a,b),sB=this.power(b,a);if(sA===0&&sB===0)continue;
       const aAtt=a.engageUntil>this.time,bAtt=b.engageUntil>this.time,tA=this.sides[0].tieScore,tB=this.sides[1].tieScore;
@@ -499,6 +532,7 @@ class Battle{
         if(s.type==='petard'){this.kill(s);continue;}
         if(s.type==='ram'){s.recoilSpeed=-Math.trunc(s.ramSpeed*.5);s.ramSpeed=Math.max(40,s.ramSpeed-10);s.speed=s.ramSpeed;}
         if(UNITS[s.type].flies)continue;
+        if(UNITS[s.type].cleave){s.engageUntil=0;continue;}
         s.engageUntil=this.time+(s.type==='ram'?.15:s.type==='pike'?.22:(UNITS[s.type].attackDuration??.3));
       }
     }

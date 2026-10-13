@@ -15,6 +15,7 @@ const {CONTENT}=require("content-v1.85");
 const {ATLASES}=require("atlases");
 const {UNIT_GEOMETRY}=require("unit-geometry");
 const {NORTH_MAP}=require("north-map");
+const {EAST_MAP}=require("east-map");
 
 // ---------- Part 1 ----------
 const page=(name,req)=>CONTENT.shopPages.find(p=>p.name===name&&p.requires===req);
@@ -86,4 +87,61 @@ for(const a of ['computerMedieval','computerEgyptian'])Object.assign(ATLASES[a].
 Object.assign(UNIT_GEOMETRY,{berserker:[-8,-12,8,12],wolf:[-16,-8,16,8],giant:[-12,-16,12,16],rune:[-8,-16,8,16],longship:[-24,-16,24,16]});
 
 const NORTH_CASTLE_IDS=castles.map(c=>c.id);
-Object.assign(exports,{CONTENT,NORTH_CASTLE_IDS});
+
+// ======================================================================
+// Part 3 - the Eastern Realm (v2.3): 16 castles (ids 55-70), the Dojo upgrade (7), five new
+//   units (ids 42-46, internal Paper Crane 47), the Eastern Castle appearance (skin 4) and two
+//   hazards: element 5 = fog, element 6 = drawbridge.
+CONTENT.units.push(
+ {id:42,name:'Ninja',description:'Invisible until it strikes or steals',cost:25,techCost:11,internal:false,hud:[48,432]},
+ {id:43,name:'Samurai',description:'Cuts through weaker units without stopping',cost:45,techCost:11,internal:false,hud:[96,432]},
+ {id:44,name:'Trebuchet',description:'Hurls stones at the castle from afar',cost:65,techCost:15,internal:false,hud:[144,432]},
+ {id:45,name:'Fan Dancer',description:'Blows enemy airships backwards',cost:40,techCost:11,internal:false,hud:[192,432]},
+ {id:46,name:'Crane Caster',description:'Paper cranes that catch arrows and shots',cost:50,techCost:15,internal:false,hud:[240,432]},
+ {id:47,name:'Paper Crane',description:'',cost:0,techCost:0,internal:true,hud:[240,432]});
+CONTENT.upgrades.push({id:7,name:'Dojo',description:'Allows purchase of eastern units.',techCost:11});
+CONTENT.shopPages.push({name:'Eastern Units',units:[42,43,45,46,44],upgrade:7,requires:7});
+const EBG=n=>`bg_east_${n}.png`;
+const EAST_CASTLES=[
+ [55,'Shogun Hideo the Welcoming',240,30,6,1,1,'coast',[2,0,42,1,43],[7],[]],
+ [56,'Shogun Kenji the Patient',250,25,6,1,2,'bamboo',[2,16,43,15,45,17],[7,3],[5]],
+ [57,'Shogun Mariko the Tide',250,30,6,1,1,'sea',[2,0,42,6,46,13],[7,0],[6]],
+ [58,'Shogun Daichi the Wall',260,20,11,1,1,'terrace',[2,16,43,44,11,14],[7,3],[6]],
+ [59,'Shogun Ayame the Swift',250,20,11,1,2,'bamboo2',[2,21,42,4,45,15],[7],[5]],
+ [60,'Shogun Goro the Lost',280,15,11,2,0,'river',[2,16,24,26,46,22],[7,4,2],[5,6]],
+ [61,'Shogun Ryo the Hungry',280,30,11,2,1,'terrace2',[2,3,42,43,18,44],[7,2],[6]],
+ [62,'Shogun Hana the Flower',290,25,11,2,1,'bamboo2',[2,16,45,13,46,12],[7,2],[5]],
+ [63,'Shogun Kuro the Black',300,20,11,2,2,'volcano2',[2,16,43,38,7,5,30],[7,0,3],[5]],
+ [64,'Shogun Tadashi the True',300,25,15,2,1,'plains',[2,16,44,24,26,27,42],[7,4],[6]],
+ [65,'Shogun Rin the Red',310,30,15,2,1,'volcano',[2,16,43,40,33,19,5],[7,0,5],[5]],
+ [66,'Shogun Jiro the Fire',310,20,15,2,2,'volcano',[2,16,38,46,42,32,6],[7,0,2],[5,6]],
+ [67,'Shogun Yuki the Wise',330,35,15,2,1,'sunset',[2,16,46,12,13,18,38],[7,2,4],[6]],
+ [68,'Shogun Sora the Falcon',330,25,15,2,2,'sea',[2,16,45,9,43,21,40,5],[7,3,0],[5]],
+ [69,'Shogun Masaru the Stout',350,20,18,2,1,'terrace',[2,16,38,10,11,44,17,7],[7,3,0,2],[5,6]],
+ [70,'Takeda the Unseen',420,30,18,2,1,'volcano2',[2,16,43,42,46,45,44,33],[7,0,2,3,4,5,6],[5,6]]];
+const eastCastles=EAST_CASTLES.map(([id,name,health,gold,techReward,difficulty,treeGrowth,bg,units,upgrades,elements],i)=>({
+  id,name,position:EAST_MAP.castles[id],health,gold,techReward,difficulty,treeGrowth,flipped:i%2===0,background:EBG(bg),skin:4,
+  units,upgrades,allowsHeals:false,attackGround:true,attackAir:true,elements,...(id===70?{aiFrequency:.55,alwaysFog:true}:{})}));
+CONTENT.maps.push({id:3,name:'Eastern Realm',image:'Map4.png',castles:eastCastles,connections:EAST_MAP.connections});
+// The North's teaser ship now sails east.
+CONTENT.maps[2].connections.find(c=>c.from===54&&c.to===1000).to=3;
+CONTENT.version='1.85+east';
+ATLASES.EastPlayer=clone('CastlePlayer','spr_east_castles_alpha.png');
+ATLASES.EastEnemy=clone('CastleEnemy','spr_east_castles_alpha.png');
+ATLASES.WorldMapEast=clone('WorldMap','east_mapcastles_alpha.png');
+function eastEntries(texture){
+  const e={
+   Ninja:anim('Ninja',0,0,16,24),NinjaWalkAnimation:anim('NinjaWalk',0,0,16,24,4),NinjaCarryAnimation:anim('NinjaCarry',64,0,16,24,4),
+   Samurai:anim('Samurai',0,24,16,32),SamuraiWalkAnimation:anim('SamuraiWalk',0,24,16,32,4),SamuraiAttackAnimation:anim('SamuraiAttack',64,24,16,32,3,{Looping:false,RevertWhenOver:true}),
+   FanDancer:anim('FanDancer',0,56,16,40),FanDancerWalkAnimation:anim('FanDancerWalk',0,56,16,40,4),FanDancerBlessAnimation:anim('FanDancerBless',64,56,16,40,1),
+   FanDancerReturnAnimation:anim('FanDancerReturn',80,56,16,40,4),FanDancerPrayAnimation:anim('FanDancerPray',144,56,16,40,1),
+   CraneCaster:anim('CraneCaster',0,96,16,36),CraneCasterWalkAnimation:anim('CraneCasterWalk',0,96,16,36,4),CraneCasterAttackAnimation:anim('CraneCasterAttack',64,96,32,36,1),CraneCasterReturnAnimation:anim('CraneCasterReturn',96,96,16,36,4),
+   PaperCrane:anim('PaperCrane',160,96,7,4),PaperCraneFlyAnimation:anim('PaperCraneFly',160,96,7,4,3),
+   Trebuchet:anim('Trebuchet',0,136,48,32),TrebuchetWalkAnimation:anim('TrebuchetWalk',0,136,48,32,4)};
+  for(const v of Object.values(e))v.texture=texture;return e;
+}
+for(const a of ['playerStandard','playerEgyptian'])Object.assign(ATLASES[a].entries,eastEntries('spr_east_blue_alpha.png'));
+for(const a of ['computerMedieval','computerEgyptian'])Object.assign(ATLASES[a].entries,eastEntries('spr_east_red_alpha.png'));
+Object.assign(UNIT_GEOMETRY,{ninja:[-8,-12,8,12],samurai:[-8,-16,8,16],trebuchet:[-24,-16,24,16],dancer:[-8,-16,8,16],caster:[-16,-18,0,18],crane:[-6,-4,6,4]});
+const EAST_CASTLE_IDS=eastCastles.map(c=>c.id);
+Object.assign(exports,{CONTENT,NORTH_CASTLE_IDS,EAST_CASTLE_IDS});
