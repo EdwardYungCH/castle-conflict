@@ -61,6 +61,13 @@ const UNITS=Object.freeze({
   archer:{id:9,name:'Archer',cost:50,speed:40,cs:0,strength:0,role:'archer',sprite:'Archer',hud:[240,48],attackFps:10},
   ram:{id:11,name:'Battering Ram',cost:55,speed:80,cs:2,strength:3,mountedStrength:2,role:'fighter',sprite:'BatteringRam',hud:[384,48],walkFps:10},
   petard:{id:14,name:'Petard',cost:30,speed:60,cs:0,strength:.1,role:'fighter',sprite:'Petard',hud:[240,0],walkFps:10},
+  // Northern Realm (fan expansion)
+  berserker:{id:36,name:'Berserker',cost:40,speed:55,cs:2,strength:2.5,role:'fighter',sprite:'Berserker',hud:[144,384],rage:true},
+  wolves:{id:37,name:'Wolf Pack',cost:35,speed:120,cs:0,strength:0,role:'pack',sprite:'Wolf',hud:[192,384],pack:3},
+  wolf:{id:41,name:'Wolf',cost:0,speed:120,cs:.5,strength:.75,role:'fighter',sprite:'Wolf',hud:[192,384],internal:true,attackDuration:.45,attackFps:1/.15},
+  giant:{id:38,name:'Frost Giant',cost:70,speed:18,cs:4,strength:6,projectileResistance:1,role:'fighter',sprite:'FrostGiant',hud:[240,384],attackFps:5,iceWalker:true},
+  rune:{id:39,name:'Rune Priest',cost:45,speed:40,cs:0,strength:0,role:'support',sprite:'RunePriest',hud:[288,384]},
+  longship:{id:40,name:'Dragon Longship',cost:60,speed:45,cs:2,strength:3,role:'fighter',sprite:'Longship',hud:[336,384],walkFps:10,crew:'soldier',iceWalker:true},
   unicorn:{id:100000,name:'Ultimate Pink Unicorn',cost:0,speed:140,cs:300,strength:300,mountedStrength:300,projectileResistance:100,role:'fighter',sprite:'Unicorn',hud:[0,0],internal:true,frameHeight:48,collision:[32,24]}
 });
 const UNIT_KEYS={};for(const [type,u] of Object.entries(UNITS))if(!u.internal||type==='mummyBody'||type==='worm'||type==='engineer')UNIT_KEYS[u.id]=type;
@@ -77,12 +84,13 @@ for(const [id,ca,un,mo,sp,co,f] of [
  [19,1.25,9,9,50,40,'flying once'],[20,0,0,0,20,30,'flying proj util off:20'],[21,.25,.25,.25,140,20,''],[22,2,0,0,40,25,''],
  [23,0,0,0,50,15,'flying proj util off:20'],[24,2,2,2,30,45,'off:15'],[25,1,1,1,25,0,''],[26,0,0,0,30,50,'util off:40'],
  [27,0,0,0,40,35,'util off:45'],[28,0,0,0,40,30,'util off:40'],[29,0,0,0,30,60,'proj t:7 util off:200'],[30,2,2,2,60,35,'flying'],
- [31,0,0,0,25,15,'flying wood:50'],[32,2,0,0,25,55,'flying util off:40'],[33,4,4,4,35,70,'flying t:4'],[34,0,0,0,30,20,'flying util off:30'],[35,8,8,8,0,60,'']]){
+ [31,0,0,0,25,15,'flying wood:50'],[32,2,0,0,25,55,'flying util off:40'],[33,4,4,4,35,70,'flying t:4'],[34,0,0,0,30,20,'flying util off:30'],[35,8,8,8,0,60,''],
+ [36,2,2.5,2.5,55,40,''],[37,1.5,.75,.75,120,35,'off:10'],[38,4,6,6,18,70,''],[39,0,0,0,40,45,'util off:35'],[40,4,3,3,45,60,'off:15'],[41,.5,.75,.75,120,0,'']]){
   const flag=k=>{const m=f.split(' ').find(s=>s.startsWith(k));return m?(m.includes(':')?Number(m.split(':')[1]):true):false;};
   INFO[id]={id,castleAttack:ca,unmounted:un,mounted:mo,speed:sp,cost:co,mountedUnit:!!flag('mounted'),flying:!!flag('flying'),collectsWood:!!flag('wood'),carryingValue:flag('wood')||0,steals:!!flag('steals'),launchesProjectile:!!flag('proj'),timeUntilProjectile:flag('t')||0,utilityUnit:!!flag('util'),utilityPerUnit:flag('per')||0,utilityOffset:flag('off')||0,alwaysWinsOnce:!!flag('once'),suicideBomber:!!flag('suicide')};
 }
-const unitStrength=u=>u.type==='cash'&&u.carrying?0:UNITS[u.type].strength;
-const mountedStrengthOf=u=>u.type==='cash'&&u.carrying?0:(UNITS[u.type].mountedStrength??UNITS[u.type].strength);
+const unitStrength=u=>u.type==='cash'&&u.carrying?0:UNITS[u.type].strength+(u.rage||0)*.5;
+const mountedStrengthOf=u=>u.type==='cash'&&u.carrying?0:(UNITS[u.type].mountedStrength??UNITS[u.type].strength)+(u.rage||0)*.5;
 const castleStrength=u=>u.type==='ram'?2+(u.ramSpeed-40)/10:UNITS[u.type].cs;
 function resolveCombat(a,b,tieScores=[0,0]){
   const power=(t,o)=>UNITS[t].mountedStrength!==undefined&&UNITS[o].mounted?UNITS[t].mountedStrength:UNITS[t].strength;
@@ -101,6 +109,9 @@ class Battle{
     this.antlion=this.cfg.antlion?{x:240,y:296,canKill:true,queued:[],killAt:null,idleAt:null,attackStarted:null}:null;
     this.tallTrees=[];if(this.cfg.tallTrees){const d=48+this.randInt(25);this.tallTrees=[240-d,240+d].map(x=>({x,base:24-this.randInt(20),ready:false,growAt:null}));}
     this.setupAt=hint?2:null;this.easyQuick=easyQuick;
+    // Northern hazards: blizzard (element 3) and thin ice (element 4)
+    this.blizzard=this.cfg.blizzard?{next:12+this.randInt(8),until:-1}:null;
+    this.thinIce=this.cfg.thinIce?{x0:204,x1:276,hole:null}:null;
     this.aiFrequency=aiFrequency??([4,1.5,.3][difficulty]??1.5);this.aiTimer=[0,0];
   }
   random(){this.seed=(1664525*this.seed+1013904223)>>>0;return this.seed/4294967296;}
@@ -116,6 +127,7 @@ class Battle{
     if(type==='cannon'){if(s.wood<=44||!this.cannons[side])return false;s.wood-=45;if(ai)s.score.numGoldSpent+=45;this.cannonFired[side]=this.time;this.addProjectile('cannonball',side,side===0?60:440,side===0?164:167,(side===0?1:-1)*300,-82);this.emit('cannon',{side});return true;}
     if(s.wood<UNITS[type].cost||this.units.length>=this.cfg.maxUnits)return false;
     s.wood-=UNITS[type].cost;s.score.numUnitsBought++;s.score.numGoldSpent+=UNITS[type].cost;
+    if(UNITS[type].pack){const dir=side===0?1:-1;for(let k=0;k<UNITS[type].pack;k++)this.createUnit(side,'wolf',{x:GROUND_START[side]-dir*14*k});this.emit('spawn',{side,unitType:type});return true;}
     this.createUnit(side,type);this.emit('spawn',{side,unitType:type});return true;
   }
   buyDoubleIncome(side){const s=this.sides[side];if(!this.running||s.doubleIncome||s.wood<=149)return false;s.wood-=150;s.doubleIncome=true;this.emit('doubleIncome',{side});return true;}
@@ -125,7 +137,7 @@ class Battle{
     u.speedBuffer=1;
     if(type==='fire'||type==='ice')u.spellAt=position.spellAt??(this.time+(type==='fire'?.5:.25)+this.random());
     if(type==='witch')u.catAt=this.time+1;
-    if(def.role==='support'){u.stopAt=this.time+(type==='necro'?.25:type==='wormPriest'?1.3:.5);if(type==='necro'){u.soulsLeft=3;u.reviveList=[];}}
+    if(def.role==='support'){u.stopAt=this.time+(type==='necro'?.25:type==='wormPriest'?1.3:type==='rune'?.6:.5);if(type==='necro'){u.soulsLeft=3;u.reviveList=[];}}
     if(type==='worm'){u.phase=position.phase??0;u.phaseAt=this.time;u.hidden=position.hidden??true;}
     this.units.push(u);
     for(const p of this.units)if(p!==u&&p.alive&&p.side===side&&p.praying&&p.type==='wind'){u.speedBuffer=Math.max(.25,Math.min(1.75,u.speedBuffer*1.25));u.badges=[...(u.badges||[]),'SpeedBadge'];p.blessUntil=this.time+.75;this.emit('bless',{side});}
@@ -134,7 +146,19 @@ class Battle{
   }
   start(){if(!this.winner){this.running=true;this.started=true;}}
   pause(){this.running=false;}
-  moveSpeed(u){return Math.trunc(u.speed*Math.max(.25,Math.min(1.75,u.speedBuffer??1)));}
+  moveSpeed(u){const v=Math.trunc(u.speed*Math.max(.25,Math.min(1.75,u.speedBuffer??1)));return this.blizzardOn()&&!UNITS[u.type].flies&&u.type!=='giant'?Math.trunc(v*.5):v;}
+  blizzardOn(){return !!this.blizzard&&this.time<this.blizzard.until;}
+  updateBlizzard(){const z=this.blizzard;if(!z)return;if(this.time+1e-9>=z.next){z.until=this.time+6;z.next=this.time+6+14+this.randInt(9);this.emit('blizzard',{duration:6});}}
+  // Thin ice: heavy ground units may break through when they first step on it; an open hole swallows anyone.
+  updateThinIce(){
+    const I=this.thinIce;if(!I)return;if(I.hole&&this.time>=I.hole.until)I.hole=null;
+    const heavy=['cavalry','heavy','ram','golem','unicorn'];
+    for(const u of this.units){if(!u.alive||UNITS[u.type].flies||u.hidden||UNITS[u.type].iceWalker||u.type==='worm')continue;
+      const x=Math.trunc(u.x);
+      if(I.hole&&Math.abs(x-I.hole.x)<=12){this.kill(u,'natural');this.emit('iceFall',{side:u.side,unitType:u.type});continue;}
+      if(x<I.x0||x>I.x1||u.iceChecked)continue;u.iceChecked=true;
+      if(heavy.includes(u.type)&&u.type!=='unicorn'&&this.random()<.35){I.hole={x:Math.max(I.x0+12,Math.min(I.x1-12,x)),opened:this.time,until:this.time+2.5};this.kill(u,'natural');this.emit('iceFall',{side:u.side,unitType:u.type});}}
+  }
   kill(u,cause='combat'){
     if(!u.alive)return;u.alive=false;
     if(u.type==='sword'&&u.praying)this.sides[u.side].tieScore--;
@@ -142,6 +166,7 @@ class Battle{
     if(u.type==='mummy'&&cause!=='castle'){const p=this.addProjectile('mummyFall',u.side,u.x,ground(u.x)-8,(u.side===0?1:-1)*60,-25);p.ghost=u.ghost;}
     if(cause==='combat'||cause==='projectile'||cause==='natural'){const large=UNITS[u.type].flies||['witch','petard'].includes(u.type);if(!UNITS[u.type].flies)this.deathAnim(u,large);}
     if(u.type==='petard')this.explodePetard(u);
+    if(UNITS[u.type].crew&&['combat','projectile','castle'].includes(cause)){const dir=u.side===0?1:-1,back=cause==='castle'?24:0;for(let k=0;k<3;k++)this.createUnit(u.side,UNITS[u.type].crew,{x:u.x-dir*(back+12*k),attackStarted:this.time});this.effect('ExplosionDefaultAnimation',u.side,u.x,ground(u.x));this.emit('crew',{side:u.side});}
     if(UNITS[u.type].flies&&!u.suppressWreck)this.fallAirship(u);
     if(cause==='combat'||cause==='projectile')this.emit('unitDied',{side:u.side,unitType:u.type,flies:!!UNITS[u.type].flies});
   }
@@ -172,7 +197,7 @@ class Battle{
     this.emit('unitHitEnemy',{side:u.side,unitType:u.type,flies:!!UNITS[u.type].flies,castleStrength:cs});
     s.hp=Math.max(-9999,cs===0?s.hp-1:Math.trunc(s.hp-cs*10));
     this.emit('castleHit',{side:enemy});
-    if(['soldier','strong','cavalry','heavy','dog','golem','ram','mummy','mummyBody','unicorn'].includes(u.type))this.attackEffects.push({...u,state:'attack',attackStarted:this.time,expires:this.time+(UNITS[u.type].attackDuration??.3)});
+    if(['soldier','strong','cavalry','heavy','dog','golem','ram','mummy','mummyBody','unicorn','berserker','wolf','giant'].includes(u.type))this.attackEffects.push({...u,state:'attack',attackStarted:this.time,expires:this.time+(UNITS[u.type].attackDuration??.3)});
     this.kill(u,'castle');
   }
   // Ground pickupTrees units (woodcutters, archers): walk forward, take the first ready tree they overlap.
@@ -226,7 +251,10 @@ class Battle{
     if(u.type==='necro'&&u.reviveList.length){for(const t of u.reviveList)this.createUnit(u.side,t,{x:u.x+dir*12,ghost:true});u.reviveList=[];this.emit('necro',{side:u.side});}
     if(u.stopAt&&this.time+1e-9>=u.stopAt){u.stopAt=null;u.praying=true;u.state=u.type==='necro'?'attack':'pray';u.attackStarted=this.time;
       if(u.type==='sword'){this.sides[u.side].tieScore++;for(const v of this.units)if(v.side===u.side&&UNITS[v.type].strength>0&&!(v.badges||[]).includes('TieBadge'))v.badges=[...(v.badges||[]),'TieBadge'];}
-      if(u.type==='wormPriest'){u.ritualAt=this.time+7;u.shakeAt=this.time+2;u.secondShakeAt=this.time+4.5;}}
+      if(u.type==='wormPriest'){u.ritualAt=this.time+7;u.shakeAt=this.time+2;u.secondShakeAt=this.time+4.5;}
+      if(u.type==='rune'){u.blessUntil=this.time+.6;u.returnAt=this.time+.9;let n=0;
+        for(const v of this.units)if(v.alive&&v.side!==u.side&&!UNITS[v.type].flies&&!v.hidden&&v.type!=='worm'){v.frozenUntil=this.time+3;n++;this.effect('IceEffectAnimation',u.side,v.x,unitY(v)+16,1/.15);}
+        this.emit('ice',{side:u.side,phase:n?'frost':'cast'});}}
     if(u.type==='wormPriest'&&u.praying){
       if(u.shakeAt&&this.time+1e-9>=u.shakeAt){u.shakeAt=null;this.emit('shake',{side:u.side,magnitude:0,duration:2.5});}
       if(u.secondShakeAt&&this.time+1e-9>=u.secondShakeAt){u.secondShakeAt=null;this.emit('shake',{side:u.side,magnitude:1,duration:2.5});}
@@ -406,6 +434,7 @@ class Battle{
     }
     const x=min+this.randInt(range);
     if(this.antlion&&x>192&&x<288)return;
+    if(this.thinIce&&x>this.thinIce.x0-16&&x<this.thinIce.x1+16)return;
     this.trees.push({id:this.treeId++,x,remaining:1,born:this.time});
   }
   tick(dt){
@@ -413,6 +442,7 @@ class Battle{
     this.skillEffects=this.skillEffects.filter(p=>p.expires>this.time);this.attackEffects=this.attackEffects.filter(u=>u.expires>this.time);this.projectileEffects=this.projectileEffects.filter(p=>p.expires>this.time);
     if(this.setupAt!==null&&this.time+1e-9>=this.setupAt){this.setupAt=null;for(const x of [168,312])this.trees.push({id:this.treeId++,x,remaining:1,born:this.time});if(this.easyQuick)for(const s of [0,1]){if(this.spawn(s,'wood',{ai:true}))this.sides[s].wood+=5;}}
     if(this.cfg.allowHeals){this.healTimer+=dt;while(this.healTimer+1e-9>=1){this.healTimer-=1;if(!this.healPickup&&this.random()<1/90){this.healPickup={x:240,y:ground(240)-8};this.emit('healSpawn');}}}
+    this.updateBlizzard();
     this.woodTimer+=dt;while(this.woodTimer+1e-9>=1){this.woodTimer-=1;for(const s of this.sides)s.wood++;this.emit('award');}
     for(const t of this.tallTrees)if(t.growAt!==null&&this.time+1e-9>=t.growAt+.55){t.ready=true;t.growAt=null;}
     const live=this.trees.filter(t=>t.remaining>0).length;
@@ -426,6 +456,7 @@ class Battle{
       if(u.type==='engineer'){this.engineer(u,dt);continue;}
       if(u.type==='treeCutter'){this.harvestTallTree(u,dt);continue;}
       if(UNITS[u.type].flies){this.fly(u,dt);continue;}
+      if(u.frozenUntil>this.time)continue;
       if(UNITS[u.type].role==='support'){this.support(u,dt);continue;}
       if(u.type==='worm'){this.updateWorm(u);continue;}
       if(u.type==='witch')this.updateWitch(u);
@@ -463,6 +494,7 @@ class Battle{
         if(!(l===a?aDies:bDies)||!s.alive||(s===a?aAtt:bAtt))continue;
         if(s.type==='cash'&&!s.carrying){s.carrying=UNITS[l.type].cost;s.state='return';s.facing=s.side===0?-1:1;s.whistleAt=this.time+1;this.effect('ExplosionDefaultAnimation',s.side,l.x,ground(l.x));this.emit('polymorph',{side:s.side});}
         s.attackStarted=this.time;
+        if(UNITS[s.type].rage&&(s.rage||0)<3){s.rage=(s.rage||0)+1;s.speedBuffer=Math.min(1.75,(s.speedBuffer??1)*1.2);if(!(s.badges||[]).includes('SpeedBadge'))s.badges=[...(s.badges||[]),'SpeedBadge'];}
         if(s.type==='worm')continue;
         if(s.type==='petard'){this.kill(s);continue;}
         if(s.type==='ram'){s.recoilSpeed=-Math.trunc(s.ramSpeed*.5);s.ramSpeed=Math.max(40,s.ramSpeed-10);s.speed=s.ramSpeed;}
@@ -470,7 +502,7 @@ class Battle{
         s.engageUntil=this.time+(s.type==='ram'?.15:s.type==='pike'?.22:(UNITS[s.type].attackDuration??.3));
       }
     }
-    this.updateHealing();this.updateAntlion();this.updateProjectiles(dt);
+    this.updateHealing();this.updateAntlion();this.updateThinIce();this.updateProjectiles(dt);
     this.units=this.units.filter(u=>u.alive);this.trees=this.trees.filter(t=>t.remaining>0);
     if(this.sides[0].hp<=0||this.sides[1].hp<=0){this.sides.forEach(s=>s.hp=Math.max(0,s.hp));this.winner=this.sides[1].hp<=0?'blue':'red';this.loser=this.winner==='blue'?1:0;this.running=false;this.emit('end',{winner:this.winner});}
   }

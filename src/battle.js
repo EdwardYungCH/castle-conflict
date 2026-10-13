@@ -1,7 +1,7 @@
 // GameScene presentation: castles, scenery, units, HUD, hints, quit/pause/help, end sequence.
 const C=require("core");
 const {Node,Scene,Menu,Button,Label,Img,DrawNode,Director,Audio,sfx,sprite,drawEntry,text,textWidth,entry,CON,btn,Store}=C;
-const {Battle,UNITS,ground,unitY,AIR_Y}=require("engine");
+const {Battle,UNITS,ground,unitY,unitBounds,AIR_Y}=require("engine");
 const {ATLASES}=require("atlases");
 const D=require("data");
 const {shouldQuit}=require("dialogs");
@@ -11,6 +11,10 @@ function drawCastle(ctx,atlas,side,upgrades,t,{debris=false,dx=0,dy=0}={}){
   const cx=(side===0?48:432)+dx,cy=191+dy;
   if(debris){drawEntry(ctx,atlas,'CastleDebris',cx,255+dy);return;}
   drawEntry(ctx,atlas,'Castle',cx,cy);
+  // Expansion: Temple (obelisk) and Solar (sun disk) had no visual in 1.85.
+  if(upgrades.includes(4))sprite(ctx,'spr_upgrades_alpha.png',[0,0,16,48],(side===0?104:376)+dx,262+dy,{flipX:side===1});
+  if(upgrades.includes(6)){const x=(side===0?136:344)+dx,f=Math.floor(t*6)%3;sprite(ctx,'spr_north_fx_alpha.png',[(side===0?0:48)+16*f,0,16,48],x,Math.floor(ground(x))-24+dy,{flipX:side===1});}
+  if(upgrades.includes(5))sprite(ctx,'spr_upgrades_alpha.png',[16+32*(Math.floor(t*4)%4),0,32,32],(side===0?76:404)+dx,124+dy+Math.round(Math.sin(t*2)),{flipX:side===1});
   for(const id of upgrades){if(id===0||id===1||id===3){const name=['Tower','Dock',null,'Seige'][id],[x,y]=UPG_POS[id][side];drawEntry(ctx,atlas,name,x+dx,y+dy);}}
   for(const id of upgrades)if(id===2){const [x,y]=UPG_POS[2][side];drawEntry(ctx,atlas,'MagicAnimation',x+dx,y+dy,t,{fps:10});}
 }
@@ -29,6 +33,7 @@ function drawUnit(ctx,atlas,u,battle,alpha=1){
   const fps=u.carrying&&u.type==='thief'?4:attack?(unit.attackFps??(u.type==='pike'?1/.15:10)):(unit.walkFps??(u.type==='master'?10:1/.15));
   const def=E[anim];if(attack&&def?.RevertWhenOver&&timer>=(def.Frames??1)/fps)anim=unit.sprite;
   drawEntry(ctx,atlas,anim,u.x,unitY(u),timer,{flipX:flip,fps:unit.flies?10:fps,alpha:(u.ghost?200/255:1)*alpha});
+  if(u.frozenUntil>battle.time){const [l,t,r,b]=unitBounds(u);ctx.save();ctx.globalAlpha=.45*alpha;ctx.fillStyle='#bfeaff';ctx.fillRect(l,t,r-l,b-t);ctx.globalAlpha=.9*alpha;ctx.fillStyle='#ffffff';ctx.fillRect(l+1,t+1,2,2);ctx.fillRect(r-4,t+4,2,2);ctx.restore();}
   const badges=u.badges||[];badges.forEach((b,k)=>{const h=E[unit.sprite]?.Height??24;drawEntry(ctx,atlas,b,u.x+(u.side===0?-1:1)*20*k,unitY(u)-h/2-14);});
 }
 function drawProjectile(ctx,atlas,sceneryAtlas,p,battle){
@@ -44,7 +49,7 @@ class BattleScene extends Scene{
     const tg=D.TREE_GROWTH[P.treeGrowth]??D.TREE_GROWTH[1];
     const opts={ai:P.mode===2?[false,false]:[false,true],difficulty:P.difficulty,campaign:P.mode===1,campaignDifficulty:P.campaignDifficulty??0,globalDifficulty:P.globalDifficulty??0,
       rosters:[P.playerUnits,P.enemyUnits],cannons:P.cannons,hint:P.hint,easyQuick:P.easyQuick,aiFrequency:P.aiFrequency,mode:P.mode,
-      config:{startWood:P.startGold,castleHealth:P.playerHealth,treeChance:tg.treeChance,maxTrees:tg.maxTrees,allowHeals:P.allowHeals,tallTrees:P.elements.includes(1),antlion:P.elements.includes(2)}};
+      config:{startWood:P.startGold,castleHealth:P.playerHealth,treeChance:tg.treeChance,maxTrees:tg.maxTrees,allowHeals:P.allowHeals,tallTrees:P.elements.includes(1),antlion:P.elements.includes(2),blizzard:P.elements.includes(3),thinIce:P.elements.includes(4)}};
     this.battle=restore?Battle.restore(restore,opts):new Battle(opts);const b=this.battle;
     if(!restore){b.sides[0].hp=b.sides[0].maxHp=P.playerHealth;b.sides[1].hp=b.sides[1].maxHp=P.enemyHealth;}
     this.skinL=D.SKINS[P.playerSkin].left;this.skinR=D.SKINS[P.mode===2?P.enemySkin:P.enemySkin].right;
@@ -140,7 +145,7 @@ class BattleScene extends Scene{
         case 'blimp':play(e.unitType==='bomber'?'bomber.wav':e.unitType==='napalm'?'napalmjet.wav':'blimp.wav');break;
         case 'drop':play('bombsaway.wav');break;case 'treeLand':play('treestick.wav');break;case 'fuse':play('petardfuse.wav');break;
         case 'fireball':play('fireball.wav');break;case 'ice':play('ice.wav');break;case 'polymorph':play('polytree.wav');break;case 'witch':play('polymorph.wav');break;
-        case 'bless':play('bless.wav');break;case 'necro':play('necro.wav');break;case 'worm':play('wurm.wav');break;case 'wormDie':play('wurmdie.wav');break;
+        case 'bless':play('bless.wav');break;case 'blizzard':play('ice.wav');break;case 'iceFall':play('ice.wav');play('groundkill.wav');break;case 'crew':play('explosion.wav');break;case 'necro':play('necro.wav');break;case 'worm':play('wurm.wav');break;case 'wormDie':play('wurmdie.wav');break;
         case 'gold':this.floats.push({str:(e.amount>0?'+':'')+e.amount,font:e.amount>0?'tiny':'tinyRed',x:e.x,y:e.y,life:0});break;
         case 'shake':this.shakeT=e.duration;this.shakeM=e.magnitude;break;
         case 'unitHitEnemy':if(this.achieve&&e.side===0){const A=this.achieve;const wood=['wood','master'].includes(e.unitType);if(!wood){A.nonWood=true;A.wood=false;}else if(!A.nonWood)A.wood=true;if(!e.flies){A.nonAir=true;A.air=false;}else if(!A.nonAir)A.air=true;if(e.unitType!=='witch'){A.nonWitch=true;A.witch=false;}else if(!A.nonWitch)A.witch=true;if(e.castleStrength>0&&e.unitType!=='worm'){A.nonWorm=true;A.worm=false;}else if(!A.nonWorm)A.worm=true;}break;
@@ -167,6 +172,14 @@ class BattleScene extends Scene{
     else Director.replace(new S.MPResultScene(P,b));
   }
   update(dt){super.update(dt);for(const e of this.explosions)e.t+=dt;}
+  drawSnow(ctx,b){
+    const t=this.sceneTime,storm=b.blizzardOn(),fade=storm?Math.min(1,(b.time-(b.blizzard.until-6))/.8,(b.blizzard.until-b.time)/.8):0;
+    const n=(this.scn.snow?36:0)+Math.round(150*fade);ctx.save();ctx.fillStyle='#ffffff';
+    for(let i=0;i<n;i++){const h=(i*2654435761)>>>0,sp=18+(h%23)+(i>=36?60*fade:0),wind=(i>=36?-90:-6)*(i>=36?fade:1);
+      const x=(((h%480)+wind*t+Math.sin(t*1.3+i)*6)%480+480)%480,y=((h>>>9)%320+sp*t)%320;ctx.globalAlpha=i%3?.85:.55;const sz=i%5===0?2:1;ctx.fillRect(Math.floor(x),Math.floor(y),sz,sz);}
+    if(fade>0){ctx.globalAlpha=.22*fade;ctx.fillRect(0,0,480,320);}
+    ctx.restore();
+  }
   updateWhilePaused(){}
   // ---- drawing ----
   drawSelf(ctx){
@@ -175,6 +188,8 @@ class BattleScene extends Scene{
     // scenery layer: birds & sparkles (z-4), then trees & heal pickup
     if(this.birds){const B=this.birds,dark=B.dark;if(B.flying)drawEntry(ctx,SA,(dark?'birdDark':'bird')+(B.flying.left?'LeftAnimation':'RightAnimation'),B.x,B.y,B.flying.t,{fps:10});else drawEntry(ctx,SA,dark?'birdDarkRight':'birdRight',B.x,B.y);}
     for(const s of this.sparkles)if(s.start!==null&&t-s.start<.6)drawEntry(ctx,SA,'sparkleAnimation',s.x,s.y,t-s.start,{fps:10});
+    if(b.thinIce){const I=b.thinIce,y=Math.floor(ground(240))-3;sprite(ctx,'spr_north_fx_alpha.png',[0,48,72,10],240,y);
+      if(I.hole)sprite(ctx,'spr_north_fx_alpha.png',[72,48,36,10],I.hole.x,Math.floor(ground(I.hole.x))-3,{alpha:Math.min(1,(I.hole.until-b.time)/.4)});}
     for(const tr of b.trees){const age=tr.grown?9:b.time-tr.born;drawEntry(ctx,SA,age<3?'treeGrowAnimation':'treeGrown',Math.trunc(tr.x),Math.floor(ground(tr.x)),age,{fps:5,anchor:'bottom'});}
     if(b.healPickup)drawEntry(ctx,SA,'healthPack',b.healPickup.x,b.healPickup.y);
     for(const p of b.skillEffects)if(p.atlas==='scenery')drawEntry(ctx,SA,p.sprite,p.x,p.y,b.time-p.born,{fps:p.fps,anchor:'bottom'});
@@ -209,6 +224,8 @@ class BattleScene extends Scene{
       for(const tt of b.tallTrees){const y=320-(tt.base+144);if(tt.ready)drawEntry(ctx,FG,'TallTreeTopGrowAnimation',tt.x,y,99,{fps:20});else if(tt.growAt!==null)drawEntry(ctx,FG,'TallTreeTopGrowAnimation',tt.x,y,b.time-tt.growAt,{fps:20});else drawEntry(ctx,FG,'TallTreeTopBareAnimation',tt.x,y);}
       if(b.antlion){const a=b.antlion;drawEntry(ctx,FG,a.attackStarted!==null?'AntlionAttackAnimation':'AntlionIdleAnimation',240,296,a.attackStarted!==null?b.time-a.attackStarted:b.time,{fps:10});}
       for(const tt of b.tallTrees)for(let i=0;i<3;i++)drawEntry(ctx,FG,'TallTreeTrunk',tt.x,320-(tt.base+48*i));}
+    // snowfall (Northern Realm) and blizzard
+    if(this.scn.snow||b.blizzard)this.drawSnow(ctx,b);
     // HUD: health bars
     for(const s of [0,1]){const bx=s===0?10:375;sprite(ctx,CON,[0,s*16,96,16],bx+48,87);
       const w=Math.max(0,Math.round(90*Math.max(0,this.lastHealth[s])/b.sides[s].maxHp));if(w>0){const left=s===0?11:468-w;C.blit(ctx,CON,96+s,0,1,16,left,79,w,16);}}

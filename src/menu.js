@@ -87,7 +87,7 @@ class SelectCampaignLayer extends Node{
 class CampaignInfoLayer extends Node{
   constructor(state,owner){super();this.state=state;this.owner=owner;this.active=true;const started=state.ownsCastle(0);
     this.add(helpBanner(155));
-    if(started){this.add(new Label('white','Campaign '+state.campaignId,240,125));this.add(new Label('tiny','Tech Points: '+state.techPoints,20,145,'left'));this.add(new Label('tiny',`Castles Conquered: ${state.numCastlesOwned()}/${state.hasSetEgyptSkin?39:20}`,460,145,'right'));}
+    if(started){this.add(new Label('white','Campaign '+state.campaignId,240,125));this.add(new Label('tiny','Tech Points: '+state.techPoints,20,145,'left'));this.add(new Label('tiny',`Castles Conquered: ${state.numCastlesOwned()}/${state.totalCastles()}`,460,145,'right'));}
     else this.add(new Label('white','New Game',240,125));
     const n=state.units.length,x0=fl(240-18*(n-1)),img=D.SKINS[state.playerSkin].left.buttons;
     state.units.forEach((id,k)=>{const b=unitIcon(id,img,x0+36*k,175,.75);this.add(b);});

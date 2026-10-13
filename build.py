@@ -3,7 +3,7 @@ Usage: python build.py [version]"""
 import base64, json, mimetypes, os, re, sys
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SRC, ASSETS = os.path.join(ROOT, 'src'), os.path.join(ROOT, 'assets')
-ORDER = ['native-timer','atlases','unit-geometry','content-v1.85','original-constants','ai-scores','core','engine','data','dialogs','battle','menu','campaign','scenes','app']
+ORDER = ['native-timer','atlases','unit-geometry','content-v1.85','north-map','expansion','original-constants','ai-scores','core','engine','data','dialogs','battle','menu','campaign','scenes','app']
 MIME = {'.png': 'image/png', '.wav': 'audio/x-wav', '.mp3': 'audio/mpeg'}
 mods = []
 for name in ORDER:

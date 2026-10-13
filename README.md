@@ -1,4 +1,4 @@
-# Castle Conflict（1.85 網頁移植）
+# Castle Conflict（1.85 網頁移植 + v2.0 北方王國擴充）
 
 已下架的 iPhone 遊戲 **Castle Conflict**（Broken Kings，2010，v1.85）的網頁版。這是單一 HTML 檔，內含原版的全部圖片與音效，可離線遊玩。
 
@@ -12,10 +12,10 @@
   - 勝利後可提升難度；Hard 難度勝利可得獎盃，獎盃按鈕點三下會召喚粉紅獨角獸。
 - **Campaign：**
   - 3 個存檔槽。
-  - 中世紀和埃及兩張世界地圖，共 39 座城堡。
+  - 中世紀、埃及和北方（v2.0）三張世界地圖，共 55 座城堡。
   - 科技商店、軍營換兵、外觀選擇、成就獎勵、征服畫面（含 Rank）。
 - **戰鬥：**
-  - 33 種兵種。
+  - 33 種原版兵種，加上 v2.0 的 5 種北方兵種。
   - 城堡升級外觀。
   - 雲、鳥、水光等景物。
   - 埃及地圖的高樹和蟻獅。
@@ -34,9 +34,33 @@
 - Multi-Player 改為同機雙人對戰。
 - Preview、Survey 改為離線版本。
 - 載入畫面加了「Touch to start」提示，因為瀏覽器要先觸控一次才能播放聲音。
-- 刻意保留原版的程式錯誤：
-  - Egyptian Temple 外觀不會解鎖。
-  - Hard 難度只要勝利就會得到獎盃。
+- 刻意保留原版的程式錯誤：Hard 難度只要勝利就會得到獎盃。
+- Egyptian Temple 外觀不會解鎖的原版錯誤，已在 v2.0 修正（見下文）。
+
+## v2.0 擴充（非官方續作內容）
+原版更新到 1.85 就停止了。埃及地圖最後那艘船只會說「Nothing here yet...」。v2.0 讓它真的開往新地方。
+
+**補完原版**
+- 征服神殿城堡後，Egyptian Temple 外觀會正確解鎖；舊存檔已征服的會自動補發。
+- Temple 成為真正的升級：在 Temple Units 頁購買（11 tech points），Temple 兵種需要它；城堡前會出現方尖碑。
+- Solar 免費自動獲得，城堡上方會出現太陽圓盤。
+
+**第三王國：北方王國（Northern Realm）**
+- 新世界地圖：16 座維京領主（Jarl）城堡（id 39–54），最後是 Hrimthur the Frost King。
+- 新外觀「Northern Fortress」：到達北方時自動解鎖。
+- 新升級 Longhouse，以及 5 個新兵種：
+
+| 兵種 | 金幣 | 特點 |
+|---|---|---|
+| Wolf Pack | 35 | 一次放出 3 隻快速的狼 |
+| Berserker | 40 | 每殺一個敵人就更快更強（最多 3 次） |
+| Dragon Longship | 60 | 衝鋒，被擊毀或撞城後跳出 3 個士兵 |
+| Rune Priest | 45 | 施法凍結所有敵方地面單位 3 秒 |
+| Frost Giant | 70 | 很慢，但力量 6、不怕弓箭和炸彈，暴風雪中不減速 |
+
+- 兩個場景機關：**暴風雪**（每隔一段時間颳雪 6 秒，地面單位減速一半）和**薄冰**（戰場中央的冰面，騎兵、重騎兵、攻城槌和石像有機會掉進冰洞）。
+- 雙人模式新增 4 個北方關卡。
+- 美術全部由原版像素圖改色、拼合而成，產生腳本在 `tools/`（`python tools/build_art.py`）。
 
 ## 專案結構
 | 路徑 | 內容 |
@@ -45,7 +69,9 @@
 | `src/` | 原始碼模組：`engine.js` 戰鬥模擬、`battle.js` 戰鬥畫面、`menu.js` 選單、`campaign.js` 戰役、`core.js` 繪圖／觸控／音效、`data.js` 存檔與設定 |
 | `assets/` | 從 IPA 解出的原版圖片與音效 |
 | `docs/specs/` | 逆向分析筆記，記錄座標、流程和數值 |
-| `build.py` | 打包腳本：`python build.py 1.0` 會重新產生 `index.html` |
+| `src/expansion.js` | v2.0 擴充內容（城堡、兵種、升級、圖集）；原版資料 `content-v1.85.js` 保持不變 |
+| `tools/` | v2.0 美術產生腳本（需要 Python、Pillow、NumPy） |
+| `build.py` | 打包腳本：`python build.py 2.0` 會重新產生 `index.html` |
 
 ## 版權
 遊戲美術、音樂與設計屬原作者 Broken Kings（Stephen Gazzard、Josiah Tobin）所有。本專案只作個人保存與學習用途。

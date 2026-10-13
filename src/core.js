@@ -16,7 +16,7 @@ function entry(atlas,name){return ATLASES[atlas]?.entries[name];}
 // Draw atlas entry. anchor: 'center' (cocos) or 'bottom'.
 function drawEntry(ctx,atlas,name,x,y,t=0,{fps=10,anchor='center',flipX=false,alpha=1,scale=1,rotation=0,frame=null}={}){
   const d=entry(atlas,name);if(!d)return false;let r=frameRect(d,t,fps);if(frame!==null){const per=d.FramesPerRow??(d.Frames??1);r=[d.X+(frame%per)*d.Width,d.Y+Math.floor(frame/per)*d.Height,d.Width,d.Height];}
-  sprite(ctx,ATLASES[atlas].texture,r,x,anchor==='bottom'?y-r[3]/2:y,{alpha,flipX,scale,rotation});return true;
+  sprite(ctx,d.texture??ATLASES[atlas].texture,r,x,anchor==='bottom'?y-r[3]/2:y,{alpha,flipX,scale,rotation});return true;
 }
 const FONTS={white:{img:'sprites_font_alpha.png',w:16,h:20},blue:{img:'sprites_font_bigblue_alpha.png',w:16,h:20},tiny:{img:'tinyfont_white_alpha.png',w:8,h:10},tinyRed:{img:'tinyfont_red_alpha.png',w:8,h:10}};
 const textWidth=(font,s)=>String(s).length*FONTS[font].w;

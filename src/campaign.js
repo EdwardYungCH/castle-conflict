@@ -8,13 +8,16 @@ const {drawCastle}=require("battle");
 const M=()=>require("menu");
 const fl=Math.floor;
 const hudRect=(id,img)=>{const u=D.unitInfo(id);return [u.hud[0],u.hud[1],48,48];};
-const UPG_RECT={0:[432,0],1:[432,48],2:[432,192],3:[384,240],100:[48,240]};
-const BOATS=[[{x:518,y:46,target:1,cam:[80,555]}],[{x:80,y:555,target:0,cam:[528,46],start:true},{x:903,y:165,target:1000,cam:[528,46]}]];
+const UPG_RECT={0:[432,0],1:[432,48],2:[432,192],3:[384,240],4:[0,384],5:[48,384],6:[96,384],100:[48,240]}; // 4-6: expansion icons (HUD rows 384+)
+const BOATS=[[{x:518,y:46,target:1,cam:[80,555]}],[{x:80,y:555,target:0,cam:[528,46],start:true},{x:903,y:165,target:2,cam:[72,112]}],
+  [{x:72,y:112,target:1,cam:[903,165],start:true},{x:925,y:592,target:1000,cam:[72,112]}]]; // [2]: Northern Realm (expansion)
+const MAP_ATLAS=['WorldMap','WorldMapEgypt','WorldMapNorth'];
+const REALM_INFO={0:['The Homeland','A land of conflicting castles'],1:['Egypt','The land of desert and fertility'],2:['The North','A frozen land of jarls and giants']};
 // ======================= World map =======================
 class WorldMapScene extends Scene{
   constructor(state){super();this.state=state;this.active=false;this.loading=this.add(new Img('travelloader.png'),50);this.after(.5,()=>this.load());}
   load(){
-    const st=this.state;this.loading.remove();this.map=st.currentMap;this.atlas=this.map===0?'WorldMap':'WorldMapEgypt';this.t=0;
+    const st=this.state;this.loading.remove();this.map=st.currentMap;this.atlas=MAP_ATLAS[this.map];this.t=0;
     this.realm=D.CONTENT.maps[this.map];this.castles=this.realm.castles;
     if(st.lastMapScale===0)this.pos={x:0,y:-1000};else this.pos={...st.lastMapPos};this.fix();
     this.fx=[];this.dots=[];this.fake=null;this.arrow=null;
@@ -35,9 +38,10 @@ class WorldMapScene extends Scene{
     if(st.inactiveUnits.length>0&&!st.hasSeenUnitScreen){st.hasSeenUnitScreen=true;this.after(.016,()=>this.tut('unit'));}
     if(st.hasSeenUnitScreen)ctl.add(new Button('mapcastles_alpha.png',[320,0,48,48],[320,96,48,48],384,284,guard(()=>{st.save();Director.replace(new UnitChangeScene(st,false));})));
     if(this.map===1&&!st.hasSetEgyptSkin){st.setEgyptSkin();this.after(1,()=>this.tut('skin'));}
+    if(this.map===2&&!st.hasSetNorthSkin){st.setNorthSkin();this.after(1,()=>this.tut('skin'));}
     if(st.hasSetEgyptSkin)ctl.add(new Button('mapcastles_alpha.png',[320,192,48,48],[320,240,48,48],444,224,guard(()=>{st.save();Director.replace(new SkinSelectScene(st));})));
     this.add(ctl,2);
-    if(lcb===0)this.after(2,()=>this.tut('welcome'));else if(lcb===1)this.after(1.6,()=>this.tut('shop'));else if(lcb===19)this.after(.8,()=>this.tut('newmap'));
+    if(lcb===0)this.after(2,()=>this.tut('welcome'));else if(lcb===1)this.after(1.6,()=>this.tut('shop'));else if(lcb===19||lcb===38)this.after(.8,()=>this.tut('newmap'));
     st.lastCastleBeat=1000;this.active=true;this.loaded=true;
   }
   tut(kind){
@@ -61,7 +65,7 @@ class WorldMapScene extends Scene{
       for(const c of this.castles){const [cx,cy]=c.position;if(mx>=cx-40&&mx<=cx+40&&my>=cy-40&&my<=cy+40&&(st.ownsCastle(c.id)||st.pathExistsToCastle(c.id))){sfx('select.wav');this.active=false;this.add(new CastleInfoLayer(st,c,this),10);return;}}
       for(const b of BOATS[this.map]){if(Math.abs(mx-b.x)<=32&&Math.abs(my-b.y)<=32){sfx('select.wav');
         if(b.target===1000){this.active=false;yesNo(this,'Nothing here yet...','Would you be interested in playing more campaigns?',()=>this.reactivate(),()=>this.reactivate());}
-        else if(st.pathExistsToLink(b.target)){this.active=false;const name=b.target===0?'The Homeland':'Egypt';yesNo(this,`Travel to ${name}?`,b.target===0?'A land of conflicting castles':'The land of desert and fertility',()=>{st.currentMap=b.target;st.lastMapPos={x:240-b.cam[0],y:160-b.cam[1]};st.lastMapScale=1;st.save();Director.replace(new WorldMapScene(st));},()=>this.reactivate());}
+        else if(st.pathExistsToLink(b.target)){this.active=false;const [name,blurb]=REALM_INFO[b.target];yesNo(this,`Travel to ${name}?`,blurb,()=>{st.currentMap=b.target;st.lastMapPos={x:240-b.cam[0],y:160-b.cam[1]};st.lastMapScale=1;st.save();Director.replace(new WorldMapScene(st));},()=>this.reactivate());}
         else message(this,'Fight your way to this ship!','Travel to new lands!',()=>this.reactivate());
         break;}}
     }
@@ -88,7 +92,7 @@ class CastleInfoLayer extends Node{
     this.add(helpBanner(155));this.add(new Label('white',owned?'You own this castle':c.name,240,125));
     this.add(new Sprite(CON,[96,16,16,16],174,145));this.add(new Label('tiny',['Sparse','Average','Fertile'][c.treeGrowth]??' ',180,145,'left'));
     this.add(new Sprite(CON,[112,16,16,16],270,145));this.add(new Label('tiny',['Novice','Experienced','Veteran','Warlord'][c.difficulty]??'',290,145,'left'));
-    c.elements.forEach((e,i)=>{if(e===1)this.add(new Sprite(CON,[192,176,16,16],154-20*i,145),5);else if(e===2){const s=new Sprite(CON,[176,176,16,16],154-20*i,145);s.tick=dt=>{s.tt=(s.tt||0)+dt;s.rect=Math.floor(s.tt/.5)%2?[160,176,16,16]:[176,176,16,16];};this.add(s,5);}});
+    c.elements.forEach((e,i)=>{if(e===3||e===4)this.add(new Sprite('spr_north_fx_alpha.png',[e===3?96:112,0,16,16],154-20*i,145),5);else if(e===1)this.add(new Sprite(CON,[192,176,16,16],154-20*i,145),5);else if(e===2){const s=new Sprite(CON,[176,176,16,16],154-20*i,145);s.tick=dt=>{s.tt=(s.tt||0)+dt;s.rect=Math.floor(s.tt/.5)%2?[160,176,16,16]:[176,176,16,16];};this.add(s,5);}});
     const img=D.SKINS[D.castleSkin(c)].right.buttons,n=c.units.length,x0=fl(240-18*(n-1));
     c.units.forEach((id,i)=>this.add(M().unitIcon(id,img,x0+36*i,175,.75)));
     this.add(new Menu([owned?new Button(BTN,[384,192,96,48],[384,240,96,48],320,220,()=>go()):btn('attack',320,220,()=>go()),btn('back',160,220,()=>{sfx('select.wav');owner.reactivate();this.remove();})]));
@@ -99,7 +103,7 @@ class CastleInfoLayer extends Node{
 const SHOP_PAGES=D.CONTENT.shopPages;
 function fauxCastle(state,dy,{fadeCannon=false}={}){
   const skin=D.SKINS[state.playerSkin].left;const n=new DrawNode((ctx,node)=>{node.t=(node.t||0);
-    drawCastle(ctx,skin.castle,0,state.upgrades.filter(u=>u<=3),node.t,{dy});
+    drawCastle(ctx,skin.castle,0,state.upgrades.filter(u=>u!==5),node.t,{dy}); // the sun would cover the heart's price label
     if(state.hasUnit(5)){ctx.save();ctx.globalAlpha=Math.min(1,node.cannonAlpha??1);drawEntry(ctx,skin.units,'Cannon',52,172+dy);ctx.restore();}});
   n.tick=dt=>{n.t=(n.t||0)+dt;if(n.cannonAlpha<1)n.cannonAlpha+=dt/.1;};return n;
 }
@@ -125,7 +129,7 @@ class ShopScene extends Scene{
     this.pageMenu?.remove();this.cur=i;const p=this.pages[i],m=new Menu();this.pageMenu=m;
     m.add(new TextItem('white',p.name,240,120));
     if(p.upgrade!==1000){const r=UPG_RECT[p.upgrade];const b=new Button(this.img,[r[0],r[1],48,48],[r[0],r[1]+96,48,48],240,160,b=>this.tap(b),{immediate:true,extra:{kind:'upgrade',id:p.upgrade}});b.drawExtra=ctx=>text(ctx,'tiny',D.upgradeInfo(p.upgrade).techCost,240,189);m.add(b);}
-    p.units.forEach((id,k)=>{const r=hudRect(id);const b=new Button(this.img,r,[r[0],r[1]+96,48,48],140+50*k,220,b=>this.tap(b),{immediate:true,extra:{kind:'unit',id,req:p.upgrade}});const u=D.unitInfo(id);b.drawExtra=ctx=>text(ctx,'tiny',u.techCost,b.x,249);m.add(b);});
+    p.units.forEach((id,k)=>{const r=hudRect(id);const b=new Button(this.img,r,[r[0],r[1]+96,48,48],140+50*k,220,b=>this.tap(b),{immediate:true,extra:{kind:'unit',id,req:p.unitReq??p.upgrade}});const u=D.unitInfo(id);b.drawExtra=ctx=>text(ctx,'tiny',u.techCost,b.x,249);m.add(b);});
     this.add(m);this.left.opacity=i>0?255:100;this.right.opacity=i<this.pages.length-1?255:100;this.updateButtons();
   }
   updateTech(){this.techLabel.str=`${this.state.techPoints} Tech Points`;}
@@ -183,7 +187,7 @@ class UnitChangeScene extends Scene{
 class SkinSelectScene extends Scene{
   constructor(state){super();this.state=state;this.add(new Img('shopbg.png'));this.add(new Label('white','Select your appearance!',240,40));
     this.idx=Math.max(0,state.unlockedSkins.indexOf(state.playerSkin));this.nameL=this.add(new Label('tiny',' ',240,70));
-    this.preview=this.add(new DrawNode(ctx=>{const sk=D.SKINS[this.state.playerSkin].left;drawCastle(ctx,sk.castle,0,state.upgrades.filter(u=>u<=3),this.t||0);if(state.hasUnit(5))drawEntry(ctx,sk.units,'Cannon',52,172);
+    this.preview=this.add(new DrawNode(ctx=>{const sk=D.SKINS[this.state.playerSkin].left;drawCastle(ctx,sk.castle,0,state.upgrades,this.t||0);if(state.hasUnit(5))drawEntry(ctx,sk.units,'Cannon',52,172);
       state.units.forEach((id,i)=>{const t=UNIT_KEYS[id];if(!t)return;drawEntry(ctx,sk.units,UNITS[t].sprite,140+80*(i%4),135+85*Math.floor(i/4));});}),1);
     const m=new Menu();this.add(m,2);
     this.l=m.add(new Button(CON,[48,128,48,48],[48,128,48,48],90,70,()=>{this.idx--;this.load();}));this.r=m.add(new Button(CON,[0,128,48,48],[0,128,48,48],390,70,()=>{this.idx++;this.load();}));
@@ -201,11 +205,11 @@ class CampaignResultScene extends Scene{
     super();const st=P.state,c=D.castleById(P.castleId);this.P=P;this.state=st;this.active=true;
     this.add(new Img(c.background));
     st.numBattles++;let newUnits=false,newSkin=false,tp=0;
-    if(victory){st.numVictories++;const already=st.ownsCastle(c.id);st.currentMap=c.id>=20?1:0;
+    if(victory){st.numVictories++;const already=st.ownsCastle(c.id);st.currentMap=c.id>=39?2:c.id>=20?1:0;
       this.goToGameOver=!already&&st.ownAllCastlesAfterWinning(c.id);
       tp=c.techReward+achievements.reduce((a,x)=>a+x.tp,0);if(already)tp=Math.trunc(tp/2);st.techPoints+=tp;
-      if(!already){st.winCastle(c.id);st.lastCastleBeat=c.id;for(const u of c.upgrades)if(!st.hasUpgradeAvailable(u)){st.upgradesAvailable.push(u);newUnits=true;}
-        if([25,27,35,36].includes(c.id)&&!st.hasSkin(1)){st.unlockedSkins.push(2);newSkin=true;}}}
+      if(!already){st.winCastle(c.id);st.lastCastleBeat=c.id;for(const u of c.upgrades)if(!st.hasUpgradeAvailable(u)){st.upgradesAvailable.push(u);newUnits=true;if(D.upgradeInfo(u).techCost===0&&!st.hasUpgrade(u))st.upgrades.push(u);}
+        if([25,27,35,36].includes(c.id)&&!st.hasSkin(2)){st.unlockedSkins.push(2);newSkin=true;}}}// v1.85 checked hasSkin(1), so the Temple skin never unlocked
     st.save();
     this.add(helpBanner(160),0);const m=new Menu();
     const cont=btn('continue_',240,233,()=>this.done()),rep=btn('replay',240,286,()=>this.retry());
@@ -225,8 +229,8 @@ class CampaignResultScene extends Scene{
     if(this.goToGameOver)Director.replace(new CampaignVictoryScene(st));else if(st.lastCastleBeat===1)Director.replace(new ShopScene(st,true));else Director.replace(new WorldMapScene(st));}
 }
 class CampaignVictoryScene extends Scene{
-  constructor(st){super();Audio.playMusic('ccwin.mp3',false);const egypt=st.currentMap===1;
-    this.add(new Img(egypt?'egypt_victory.png':'victory.png'));const night=this.add(new Img(egypt?'egypt_victory_night.png':'victory_night.png'));night.opacity=0;night.run(new Seq(new Delay(3.25),FadeIn(1)));
+  constructor(st){super();Audio.playMusic('ccwin.mp3',false);const pre=['','egypt_','north_'][st.currentMap]??'';
+    this.add(new Img(pre+'victory.png'));const night=this.add(new Img(pre+'victory_night.png'));night.opacity=0;night.run(new Seq(new Delay(3.25),FadeIn(1)));
     const l1=this.add(new Label('white','You have conquered the realm!',240,20));l1.opacity=0;l1.run(new Seq(new Delay(5),FadeIn(1)));
     if(!st.conqueredAllRealms()){const l2=this.add(new Label('white',"But there's more realms left!",240,40));l2.opacity=0;l2.run(new Seq(new Delay(5),FadeIn(1)));}
     this.after(8,()=>{sfx('explosionbig.wav');this.add(new Label('white',`Victories: ${st.numVictories} / Battles: ${st.numBattles}`,20,80,'left'));});
