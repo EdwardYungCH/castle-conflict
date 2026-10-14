@@ -14,7 +14,8 @@ const SKINS=[
  {name:'Egyptian Pyramid',file:'EgyptianSkin',left:{units:'playerEgyptian',castle:'PyramidPlayer',buttons:'sprites_egypt_bluehud_big_alpha.png'},right:{units:'computerEgyptian',castle:'PyramidEnemy',buttons:'sprites_egypt_redhud_big_alpha.png'}},
  {name:'Egyptian Temple',file:'EgyptianTempleSkin',left:{units:'playerEgyptian',castle:'TemplePlayer',buttons:'sprites_egypt_bluehud_big_alpha.png'},right:{units:'computerEgyptian',castle:'TempleEnemy',buttons:'sprites_egypt_redhud_big_alpha.png'}},
  {name:'Northern Fortress',file:'NorthernSkin',left:{units:'playerStandard',castle:'NorthPlayer',buttons:'sprites_hud_alpha.png'},right:{units:'computerMedieval',castle:'NorthEnemy',buttons:'sprites_redhud_big_alpha.png'}},
- {name:'Eastern Castle',file:'EasternSkin',left:{units:'playerStandard',castle:'EastPlayer',buttons:'sprites_hud_alpha.png'},right:{units:'computerMedieval',castle:'EastEnemy',buttons:'sprites_redhud_big_alpha.png'}}];
+ {name:'Eastern Castle',file:'EasternSkin',left:{units:'playerStandard',castle:'EastPlayer',buttons:'sprites_hud_alpha.png'},right:{units:'computerMedieval',castle:'EastEnemy',buttons:'sprites_redhud_big_alpha.png'}},
+ {name:'Dwarven Hold',file:'UnderSkin',left:{units:'playerStandard',castle:'UnderPlayer',buttons:'sprites_hud_alpha.png'},right:{units:'computerMedieval',castle:'UnderEnemy',buttons:'sprites_redhud_big_alpha.png'}}];
 // PreDefineScenery sets (canvas coordinates for sparkles: y = 320 - cocos y)
 const SCENERY={
  hill:{birds:'light',sparkles:[[235,140],[345,210],[245,280]]},
@@ -30,7 +31,8 @@ const CASTLE_SCENERY={0:'hill',6:'hill',9:'hill',1:'bird',4:'bird',14:'bird',7:'
 const BG_SCENERY={'bg_grass.png':'hill','bg_grass2.png':'bird','bg_plains.png':'bird','bg_river.png':'bird','bg_mountains.png':'bird','bg_forest1.png':'forest','bg_beachforest.png':'forestBeach','bg_water2.png':'water','bg_water3.png':'water','bg_watersunset.png':'sunsetWater','bg_dry.png':'dry','bg_forestsunset.png':'darkBird','bg_mountainsunset.png':'darkBird','bg_sunset.png':'darkBird'};
 const MP_LEVELS=[['bg_egypt_desert1.png','Wastelands',0,1,[]],['bg_egypt_nile2.png','Fury Bend',2,1,[2,1]],['bg_egypt_grass1.png','Valley of the Dead',2,1,[]],['bg_egypt_desert3.png','Sandy Expanse',0,1,[]],['bg_egypt_nile1.png','Antlions Hunger',1,1,[2,1]],['bg_egypt_grass2.png',"King's Row",1,1,[]],['bg_egypt_desert4.png','The Three Fingers',1,1,[2]],['bg_egypt_nile3.png','Bounteous Nile',2,1,[1]],['bg_egypt_desert5.png','Glimmering Hope',1,1,[]],['bg_egypt_grass4.png','Flourishing Green',2,1,[]],['bg_egypt_nile4.png','Retreat',1,1,[1]],['bg_egypt_sunset1.png','Fading Hope',0,1,[2]],['bg_egypt_sunset2.png','Retiring Day',1,1,[1,2]],['bg_egypt_night1.png','Desert Dream',1,1,[]],['bg_beachforest.png','Trifalgor Forest',2,0,[]],['bg_dry.png','The Drylands',0,0,[]],['bg_grass2.png','Grassy Plains',1,0,[]],['bg_water2.png','Distant Home',1,0,[]],['bg_mountains.png','Sky Mountain',1,0,[]],['bg_plains.png','Barren Plains',0,0,[]],['bg_forest1.png','The Endless Wood',2,0,[]],['bg_river.png','Flowstream',1,0,[]],['bg_sunset.png','The Aftermath',1,0,[]],['bg_mountainsunset.png','The Distance',0,0,[]],['bg_forestsunset.png',"Hero's Retreat",2,0,[]],['bg_watersunset.png','Peace',1,0,[]],
  ['bg_north_hills.png','Frostfell',1,2,[3]],['bg_north_river.png','Thin Ice',1,2,[4]],['bg_north_fjord.png','Fjordland',2,2,[]],['bg_north_aurora.png','Northern Lights',1,2,[3,4]],
- ['bg_east_bamboo.png','Bamboo Grove',2,3,[5]],['bg_east_river.png','The Crossing',1,3,[6]],['bg_east_volcano.png','Ashfall',0,3,[5,6]],['bg_east_bamboo2.png','Blossom Road',1,3,[]]].map(([bg,name,trees,realm,elements])=>({bg,name,trees,egypt:realm===1,north:realm===2,east:realm===3,elements}));
+ ['bg_east_bamboo.png','Bamboo Grove',2,3,[5]],['bg_east_river.png','The Crossing',1,3,[6]],['bg_east_volcano.png','Ashfall',0,3,[5,6]],['bg_east_bamboo2.png','Blossom Road',1,3,[]],
+ ['bg_under_cavern.png','The Dig',1,4,[8]],['bg_under_lavariver.png','Magma Run',1,4,[8,7]],['bg_under_crystal.png','Crystal Hall',2,4,[8]],['bg_under_abyss.png','The Abyss',0,4,[7]]].map(([bg,name,trees,realm,elements])=>({bg,name,trees,egypt:realm===1,north:realm===2,east:realm===3,under:realm===4,elements}));
 const TREE_GROWTH=[{treeChance:170,maxTrees:5},{treeChance:130,maxTrees:10},{treeChance:90,maxTrees:12}];
 // ---------- GameSettings ----------
 const DEFAULT_SETTINGS={difficulty:0,gameLength:1,treeGrowthRate:1,allowHeals:true,hasTrophy:false};
@@ -49,7 +51,7 @@ class CampaignState{
     this.upgrades=Array.isArray(d.upgrades)?[...d.upgrades]:[];this.startHealth=d.startHealth??80;this.playerSkin=d.playerSkin??0;
     this.lastMapPos=d.lastMapPos??{x:0,y:0};this.lastMapScale=d.lastMapScale??0;this.numBattles=d.numBattles??0;this.numVictories=d.numVictories??0;
     this.currentMap=d.currentMap??0;this.upgradesAvailable=Array.isArray(d.upgradesAvailable)?[...d.upgradesAvailable]:[3];
-    this.hasSetEgyptSkin=!!d.hasSetEgyptSkin;this.hasSetNorthSkin=!!d.hasSetNorthSkin;this.hasSetEastSkin=!!d.hasSetEastSkin;this.unlockedSkins=Array.isArray(d.unlockedSkins)?[...d.unlockedSkins]:[0];
+    this.hasSetEgyptSkin=!!d.hasSetEgyptSkin;this.hasSetNorthSkin=!!d.hasSetNorthSkin;this.hasSetEastSkin=!!d.hasSetEastSkin;this.hasSetUnderSkin=!!d.hasSetUnderSkin;this.unlockedSkins=Array.isArray(d.unlockedSkins)?[...d.unlockedSkins]:[0];
     // Saves from before the Temple-skin fix: grant it if a temple castle is already conquered.
     if(!this.unlockedSkins.includes(2)&&[25,27,35,36].some(i=>this.ownedCastles[i]))this.unlockedSkins.push(2);
     // Solar costs nothing: own it as soon as it is available (older saves too).
@@ -70,7 +72,8 @@ class CampaignState{
   setEgyptSkin(){if(!this.unlockedSkins.includes(1))this.unlockedSkins.push(1);this.playerSkin=1;this.hasSetEgyptSkin=true;}
   setNorthSkin(){if(!this.unlockedSkins.includes(3))this.unlockedSkins.push(3);this.playerSkin=3;this.hasSetNorthSkin=true;}
   setEastSkin(){if(!this.unlockedSkins.includes(4))this.unlockedSkins.push(4);this.playerSkin=4;this.hasSetEastSkin=true;}
-  totalCastles(){return this.hasSetEastSkin?CASTLES.length:this.hasSetNorthSkin?55:this.hasSetEgyptSkin?39:20;}
+  setUnderSkin(){if(!this.unlockedSkins.includes(5))this.unlockedSkins.push(5);this.playerSkin=5;this.hasSetUnderSkin=true;}
+  totalCastles(){return this.hasSetUnderSkin?CASTLES.length:this.hasSetEastSkin?71:this.hasSetNorthSkin?55:this.hasSetEgyptSkin?39:20;}
   ownAllCastlesAfterWinning(id){const map=CONTENT.maps.find(m=>m.castles.some(c=>c.id===id));return map.castles.every(c=>c.id===id||this.ownedCastles[c.id]);}
   conqueredAllRealms(){return CASTLES.every(c=>this.ownedCastles[c.id]);}
   connections(){return CONTENT.maps.flatMap(m=>m.connections.map(c=>({...c,startPosition:!!(c.start&&c.mapLink)})));}
@@ -86,16 +89,16 @@ function quickParams(settings=Settings.load()){
     hint:settings.difficulty===0,easyQuick:settings.difficulty===0,doubleIncome:true,trophy:settings.hasTrophy,elements:[],globalDifficulty:settings.difficulty};
 }
 function campaignParams(state,castleId,settings=Settings.load()){
-  const c=castleById(castleId),egypt=c.skin===1,north=c.skin===3,east=c.skin===4,eSkin=castleSkin(c);
+  const c=castleById(castleId),egypt=c.skin===1,north=c.skin===3,east=c.skin===4,under=c.skin===5,eSkin=castleSkin(c);
   const pu=state.units.map(id=>UNIT_KEYS[id]).filter(Boolean),eu=c.units.map(id=>UNIT_KEYS[id]).filter(Boolean);
-  return {mode:1,castleId,state,background:c.background,scenery:egypt?'none':north?(c.background.includes('aurora')?'snowNight':'snow'):east?(c.background.includes('volcano2')||c.background.includes('sunset')?'darkBird':'bird'):(CASTLE_SCENERY[castleId]||'bird'),sceneryAtlas:egypt?'EgyptianScenery':north?'NorthScenery':'Scenery',egypt,
+  return {mode:1,castleId,state,background:c.background,scenery:egypt?'none':north?(c.background.includes('aurora')?'snowNight':'snow'):east?(c.background.includes('volcano2')||c.background.includes('sunset')?'darkBird':'bird'):under?'none':(CASTLE_SCENERY[castleId]||'bird'),sceneryAtlas:egypt?'EgyptianScenery':north?'NorthScenery':'Scenery',egypt,
     playerSkin:state.playerSkin,enemySkin:eSkin,playerUnits:pu,enemyUnits:eu,playerUpgrades:[...state.upgrades],enemyUpgrades:[...c.upgrades],cannons:[pu.includes('cannon'),eu.includes('cannon')],
     playerHealth:state.startHealth,enemyHealth:c.health,startGold:c.gold,aiFrequency:c.aiFrequency??[3,2,.75][c.difficulty]??.75,difficulty:c.difficulty,campaignDifficulty:c.difficulty,
     treeGrowth:c.treeGrowth,allowHeals:c.allowsHeals,alwaysFog:!!c.alwaysFog,hint:!state.ownsCastle(0),easyQuick:false,doubleIncome:false,trophy:false,elements:c.elements,globalDifficulty:settings.difficulty};
 }
 function mpParams(level,armies,settings){
-  const L=MP_LEVELS[level],skin=L.egypt?1:L.north?3:L.east?4:0;
-  return {mode:2,background:L.bg,scenery:L.egypt?'none':L.north?(L.bg.includes('aurora')?'snowNight':'snow'):L.east?'bird':(BG_SCENERY[L.bg]||'bird'),sceneryAtlas:L.egypt?'EgyptianScenery':L.north?'NorthScenery':'Scenery',egypt:L.egypt,levelName:L.name,
+  const L=MP_LEVELS[level],skin=L.egypt?1:L.north?3:L.east?4:L.under?5:0;
+  return {mode:2,background:L.bg,scenery:L.egypt?'none':L.north?(L.bg.includes('aurora')?'snowNight':'snow'):L.east?'bird':L.under?'none':(BG_SCENERY[L.bg]||'bird'),sceneryAtlas:L.egypt?'EgyptianScenery':L.north?'NorthScenery':'Scenery',egypt:L.egypt,levelName:L.name,
     playerSkin:armies[0].skin??skin,enemySkin:armies[1].skin??skin,playerUnits:armies[0].units,enemyUnits:armies[1].units,playerUpgrades:armies[0].upgrades??[0],enemyUpgrades:armies[1].upgrades??[0],
     cannons:[armies[0].units.includes('cannon'),armies[1].units.includes('cannon')],playerHealth:armies[0].health??120,enemyHealth:armies[1].health??120,startGold:25,aiFrequency:1.5,difficulty:1,
     treeGrowth:L.trees,allowHeals:settings.heals,hint:false,easyQuick:false,doubleIncome:false,trophy:false,elements:L.elements,globalDifficulty:1,twoPlayer:true};

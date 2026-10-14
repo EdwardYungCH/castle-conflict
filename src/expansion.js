@@ -16,6 +16,7 @@ const {ATLASES}=require("atlases");
 const {UNIT_GEOMETRY}=require("unit-geometry");
 const {NORTH_MAP}=require("north-map");
 const {EAST_MAP}=require("east-map");
+const {UNDER_MAP}=require("under-map");
 
 // ---------- Part 1 ----------
 const page=(name,req)=>CONTENT.shopPages.find(p=>p.name===name&&p.requires===req);
@@ -144,4 +145,58 @@ for(const a of ['playerStandard','playerEgyptian'])Object.assign(ATLASES[a].entr
 for(const a of ['computerMedieval','computerEgyptian'])Object.assign(ATLASES[a].entries,eastEntries('spr_east_red_alpha.png'));
 Object.assign(UNIT_GEOMETRY,{ninja:[-8,-12,8,12],samurai:[-8,-16,8,16],trebuchet:[-24,-16,24,16],dancer:[-8,-16,8,16],caster:[-16,-18,0,18],crane:[-6,-4,6,4]});
 const EAST_CASTLE_IDS=eastCastles.map(c=>c.id);
-Object.assign(exports,{CONTENT,NORTH_CASTLE_IDS,EAST_CASTLE_IDS});
+
+// ======================================================================
+// Part 4 - the Underworld (v2.4): 16 castles (ids 71-86), the Forge upgrade (8), units 48-52
+//   (internal Bat 54), the Dwarven Hold appearance (skin 5), element 7 = lava eruptions,
+//   element 8 = the tunnel lane (miners, burrowers and dwarves live there).
+CONTENT.units.push(
+ {id:48,name:'Miner',description:'Digs ore in the tunnel (30 gold)',cost:10,techCost:6,internal:false,hud:[336,432]},
+ {id:49,name:'Burrower',description:'Tunnels under the fight to bite the castle',cost:35,techCost:11,internal:false,hud:[384,432]},
+ {id:50,name:'Lava Golem',description:'Leaves a pool of lava when it dies',cost:75,techCost:18,internal:false,hud:[432,432]},
+ {id:51,name:'Bat Swarm',description:'Three fast bats that harass airships',cost:30,techCost:11,internal:false,hud:[0,576]},
+ {id:52,name:'Dwarf Engineer',description:'Seals the tunnel, or breaks an enemy seal',cost:40,techCost:15,internal:false,hud:[48,576]},
+ {id:54,name:'Bat',description:'',cost:0,techCost:0,internal:true,hud:[0,576]});
+CONTENT.upgrades.push({id:8,name:'Forge',description:'Allows purchase of underworld units.',techCost:11});
+CONTENT.shopPages.push({name:'Underworld Units',units:[48,49,51,52,50],upgrade:8,requires:8});
+const UBG=n=>`bg_under_${n}.png`;
+const UNDER_CASTLES=[
+ [71,'Thane Borin the Gatekeeper',250,30,6,1,1,'cavern',[2,0,48,49,1],[8],[8]],
+ [72,'Thane Dagna the Deep',260,25,6,1,2,'fungus',[2,16,48,49,17,15],[8,3],[8,7]],
+ [73,'Thane Grim the Miner',260,30,6,1,1,'cavern2',[2,0,48,52,49,13],[8,2],[8]],
+ [74,'Thane Hilda the Hammer',270,20,11,1,1,'lavariver',[2,16,48,49,11,14],[8,3],[8,7]],
+ [75,'Thane Orik the Swift',260,15,11,1,2,'crystal',[2,21,48,51,4,15],[8,0],[8]],
+ [76,'Thane Vesna the Lost',290,15,11,2,0,'deep',[2,16,24,26,49,22],[8,4,2],[8,7]],
+ [77,'Thane Bram the Greedy',290,30,11,2,1,'cavern',[2,3,48,49,18,52],[8,2],[8]],
+ [78,'Thane Ulla the Burning',300,25,11,2,1,'lavalake',[2,16,50,13,12,33],[8,2,0],[7]],
+ [79,'Thane Kell the Black',310,20,11,2,2,'shore',[2,16,48,49,7,5,30],[8,0,3],[8,7]],
+ [80,'Thane Runa the Watcher',310,25,15,2,1,'crystal',[2,16,49,52,24,26,51],[8,4,0],[8]],
+ [81,'Thane Fenn the Red',320,30,15,2,1,'lavariver',[2,16,50,36,33,19,5],[8,0,5],[8,7]],
+ [82,'Thane Mira the Wise',320,20,15,2,2,'forge',[2,16,48,52,39,12,13],[8,2],[8,7]],
+ [83,'Thane Gorm the Stout',340,35,15,2,1,'cavern2',[2,16,38,10,11,49,17],[8,3,2],[8]],
+ [84,'Thane Sif the Swarm',340,25,15,2,2,'fungus',[2,16,51,9,43,21,49,5],[8,3,0,7],[8,7]],
+ [85,'Thane Hakon the Old',360,30,18,2,1,'abyss',[2,16,50,10,44,49,52,7],[8,3,0,2,7],[8,7]],
+ [86,'Durgan the Deep',450,30,18,2,1,'forge',[2,16,50,49,52,51,38,43],[8,0,2,3,4,5,6,7],[8,7]]];
+const underCastles=UNDER_CASTLES.map(([id,name,health,gold,techReward,difficulty,treeGrowth,bg,units,upgrades,elements],i)=>({
+  id,name,position:UNDER_MAP.castles[id],health,gold,techReward,difficulty,treeGrowth,flipped:i%2===1,background:UBG(bg),skin:5,
+  units,upgrades,allowsHeals:false,attackGround:true,attackAir:true,elements,...(id===86?{aiFrequency:.5}:{})}));
+CONTENT.maps.push({id:4,name:'Underworld',image:'Map5.png',castles:underCastles,connections:UNDER_MAP.connections});
+CONTENT.maps[3].connections.find(c=>c.from===70&&c.to===1000).to=4;
+CONTENT.version='1.85+under';
+ATLASES.UnderPlayer=clone('CastlePlayer','spr_under_castles_alpha.png');
+ATLASES.UnderEnemy=clone('CastleEnemy','spr_under_castles_alpha.png');
+ATLASES.WorldMapUnder=clone('WorldMap','under_mapcastles_alpha.png');
+function underEntries(texture){
+  const e={
+   Miner:anim('Miner',0,0,16,24),MinerWalkAnimation:anim('MinerWalk',0,0,16,24,4),MinerCarryAnimation:anim('MinerCarry',64,0,16,24,4),
+   Burrower:anim('Burrower',0,24,32,16),BurrowerWalkAnimation:anim('BurrowerWalk',0,24,32,16,5),BurrowerAttackAnimation:anim('BurrowerAttack',160,24,32,16,3,{Looping:false,RevertWhenOver:true}),
+   LavaGolem:anim('LavaGolem',0,40,24,32),LavaGolemWalkAnimation:anim('LavaGolemWalk',0,40,24,32,4),LavaGolemAttackAnimation:anim('LavaGolemAttack',96,40,24,32,4,{Looping:false,RevertWhenOver:true}),
+   Dwarf:anim('Dwarf',0,72,16,24),DwarfWalkAnimation:anim('DwarfWalk',0,72,16,24,4),DwarfReturnAnimation:anim('DwarfReturn',0,72,16,24,4),
+   Bat:anim('Bat',64,72,24,10),BatFlyAnimation:anim('BatFly',64,72,24,10,2)};
+  for(const v of Object.values(e))v.texture=texture;return e;
+}
+for(const a of ['playerStandard','playerEgyptian'])Object.assign(ATLASES[a].entries,underEntries('spr_under_blue_alpha.png'));
+for(const a of ['computerMedieval','computerEgyptian'])Object.assign(ATLASES[a].entries,underEntries('spr_under_red_alpha.png'));
+Object.assign(UNIT_GEOMETRY,{miner:[-8,-12,8,12],burrower:[-16,-8,16,8],lavaGolem:[-12,-16,12,16],bat:[-12,-5,12,5],dwarf:[-8,-12,8,12]});
+const UNDER_CASTLE_IDS=underCastles.map(c=>c.id);
+Object.assign(exports,{CONTENT,NORTH_CASTLE_IDS,EAST_CASTLE_IDS,UNDER_CASTLE_IDS});

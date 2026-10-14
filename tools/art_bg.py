@@ -170,3 +170,33 @@ EAST_BG = {'bg_east_bamboo.png': ('bg_forest1.png', east_bamboo), 'bg_east_bambo
            'east_victory.png': ('victory.png', east_blossom), 'east_victory_night.png': ('victory_night.png', lambda im: hsv_map(im, lambda h, s, v, x, y: (h + .09, s, v)))}
 def build_east():
     for dst, (src, fn) in EAST_BG.items(): fn(Image.open(os.path.join(A, src))).convert('RGB').save(os.path.join(A, dst), optimize=True)
+
+# ---------------------------------------------------------------- Underworld
+def cave(im, seed=1, lava_water=True):
+    r = random.Random(seed)
+    def f(h, s, v, x, y):
+        blue = (h > .5) & (h < .76)
+        sky = blue & (s < .3) & (v > .6) & (y < 230)
+        water = blue & ~sky & (y > 120) & (v > .4)
+        green = (h > .14) & (h < .46) & (s > .12)
+        warm = ((h < .14) | (h > .9)) & (s > .4) & (v > .6) & (y < 240)   # sunsets, paths
+        h2 = np.where(sky, .07, np.where(water, .06, np.where(green, .07, np.where(warm, .05, h))))
+        s2 = np.where(sky, .3, np.where(water, .88, np.where(green, .22, np.where(warm, .5, s))))
+        v2 = np.where(sky, .14 + .06 * (y / 260), np.where(water, .55 + .3 * v, np.where(green, v * .55, np.where(warm, v * .5, v))))
+        return h2, s2, v2
+    out = hsv_map(im, f if lava_water else (lambda h, s, v, x, y: f(h, s, v, x, y)))
+    d = __import__('PIL.ImageDraw', fromlist=['ImageDraw']).Draw(out)
+    for _ in range(26):   # stalactites hanging from the ceiling
+        x = r.randint(0, 479); w = r.randint(4, 12); h = r.randint(14, 48)
+        d.polygon([(x - w, 0), (x + w, 0), (x, h)], fill=(74, 60, 54, 255)); d.line([(x + w, 0), (x, h)], fill=(40, 32, 30, 255)); d.line([(x - w + 2, 0), (x - 1, h - 3)], fill=(96, 80, 72, 255))
+    return out
+
+UNDER_BG = {'bg_under_cavern.png': 'bg_grass.png', 'bg_under_cavern2.png': 'bg_grass2.png', 'bg_under_lavalake.png': 'bg_water2.png', 'bg_under_lavariver.png': 'bg_river.png',
+            'bg_under_fungus.png': 'bg_forest1.png', 'bg_under_crystal.png': 'bg_mountains.png', 'bg_under_deep.png': 'bg_plains.png', 'bg_under_forge.png': 'bg_mountainsunset.png',
+            'bg_under_abyss.png': 'bg_sunset.png', 'bg_under_shore.png': 'bg_beachforest.png',
+            'under_victory.png': 'victory.png', 'under_victory_night.png': 'victory_night.png'}
+def build_under():
+    for i, (dst, src) in enumerate(UNDER_BG.items()):
+        im = Image.open(os.path.join(A, src))
+        out = cave(im, i + 1) if not dst.startswith('under_victory') else hsv_map(im, lambda h, s, v, x, y: (np.where(s > .2, .05, h), s, v * .8))
+        out.convert('RGB').save(os.path.join(A, dst), optimize=True)
