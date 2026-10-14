@@ -1,10 +1,10 @@
 {
   "name": "castle-conflict",
-  "version": "2.5.0",
+  "version": "3.0.0",
   "private": true,
   "description": "Castle Conflict 1.85 web port, wrapped as an iOS app with Capacitor",
   "scripts": {
-    "build": "python3 build.py 2.5 && node scripts/www.js",
+    "build": "python3 build.py 3.0 && node scripts/www.js",
     "ios:add": "npx cap add ios && sh scripts/ios-patch.sh",
     "ios:sync": "npm run build && npx cap sync ios"
   },
