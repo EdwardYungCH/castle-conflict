@@ -19,6 +19,7 @@ canvas.addEventListener('pointermove',e=>{const [x,y]=toLogical(e);Touch.moved(e
 canvas.addEventListener('pointerup',e=>{const [x,y]=toLogical(e);Touch.ended(e.pointerId,x,y);});
 canvas.addEventListener('pointercancel',e=>{Touch.claims.delete(e.pointerId);});
 for(const ev of ['contextmenu','selectstart','dblclick'])canvas.addEventListener(ev,e=>e.preventDefault());
+canvas.addEventListener('wheel',e=>{e.preventDefault();const [x,y]=toLogical(e);Director.scene?.wheel?.(e.deltaY,x,y);},{passive:false});
 // Keyboard: 1-9 = player 1 unit buttons, Q..O = player 2 (local multiplayer), Space = pause, Esc = quit dialog
 const P2KEYS='qwertyuio';
 document.addEventListener('keydown',e=>{
@@ -48,7 +49,7 @@ const loading=new S.LoadingScene();
   await Promise.all(['Loading.png','sprites_title_alpha.png','tinyfont_white_alpha.png'].map(load));
   Director.replace(loading);requestAnimationFrame(frame);
   await Promise.all(Object.keys(ASSETS).filter(k=>k.endsWith('.png')).map(load));
-  await Audio.init(ASSETS);
+  await Audio.init(ASSETS);require("ui").UI.loadVolume();
   loading.ready=true;
   window.__cc={Director,S,C,D:require("data"),E:require("engine"),X:require("extras")};
 })();

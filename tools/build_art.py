@@ -7,5 +7,5 @@ art_north.map_icons(); art_north.castle_skin(); art_north.scenery(); art_north.u
 art_map.build_all()
 art_bg.build_all(); art_bg.build_east(); art_bg.build_under(); art_bg.build_sky()
 art_east.build(); art_under.build(); art_sky.build(); art_north.register_icons(); art_east.register_icons(); art_under.register_icons(); art_sky.register_icons(); art_hud.build()
-import art_ui; art_ui.build()
+import art_ui; art_ui.build(); art_ui.red_font()
 print('all art ok')

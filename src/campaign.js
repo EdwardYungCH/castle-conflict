@@ -5,6 +5,7 @@ const D=require("data");
 const {UNITS,UNIT_KEYS}=require("engine");
 const {yesNo,message,shouldQuit,tutorial}=require("dialogs");
 const {drawCastle}=require("battle");
+const {UI,StoneBtn,TabletBtn,ELEMENT_ICON}=require("ui");
 const M=()=>require("menu");
 const fl=Math.floor;
 const hudRect=(id,img)=>{const u=D.unitInfo(id);return [u.hud[0],u.hud[1],48,48];};
@@ -22,7 +23,7 @@ class WorldMapScene extends Scene{
   load(){
     const st=this.state;this.loading.remove();this.map=st.currentMap;this.atlas=MAP_ATLAS[this.map];this.t=0;
     this.realm=D.CONTENT.maps[this.map];this.castles=this.realm.castles;
-    if(st.lastMapScale===0)this.pos={x:0,y:-1000};else this.pos={...st.lastMapPos};this.fix();
+    if(st.lastMapScale===0){this.pos={x:0,y:-1000};this.zoom=1;}else{this.pos={...st.lastMapPos};this.zoom=st.lastMapScale>0?st.lastMapScale:1;}this.zoom=Math.max(this.minZoom(),Math.min(2,this.zoom));this.fix();this.touches=new Map();this.pinch=null;this.modern=UI.modern;
     this.fx=[];this.dots=[];this.fake=null;this.arrow=null;
     const lcb=st.lastCastleBeat;
     if(this.castles.some(c=>c.id===lcb)){const c=D.castleById(lcb);this.fake=c;this.after(1,()=>{this.fake=null;this.fx.push({name:'ExplosionDefaultAnimation',x:c.position[0],y:c.position[1],t:0,fps:20});sfx('explosion.wav');});}
@@ -46,6 +47,7 @@ class WorldMapScene extends Scene{
     if(this.map===4&&!st.hasSetUnderSkin){st.setUnderSkin();this.after(1,()=>this.tut('skin'));}
     if(this.map===5&&!st.hasSetSkySkin){st.setSkySkin();this.after(1,()=>this.tut('skin'));}
     if(st.hasSetEgyptSkin)ctl.add(new Button('mapcastles_alpha.png',[320,192,48,48],[320,240,48,48],444,224,guard(()=>{st.save();Director.replace(new SkinSelectScene(st));})));
+    if(this.modern){ctl.add(new StoneBtn(52,200,guard(()=>this.zoomBy(1.25,240,160)),{label:'+'}));ctl.add(new StoneBtn(52,248,guard(()=>this.zoomBy(1/1.25,240,160)),{label:'-'}));}
     this.add(ctl,2);
     if(lcb===0)this.after(2,()=>this.tut('welcome'));else if(lcb===1)this.after(1.6,()=>this.tut('shop'));else if(lcb===19||lcb===38||lcb===54||lcb===70||lcb===86)this.after(.8,()=>this.tut('newmap'));
     st.lastCastleBeat=1000;this.active=true;this.loaded=true;
@@ -59,15 +61,28 @@ class WorldMapScene extends Scene{
     else if(kind==='newmap')tutorial(this,[['white','New map available!',145],['tiny','Touch the ship to travel',175]],done,{sound:false});
   }
   reactivate(){this.active=true;}
-  fix(){const e=C.VIEW.ext;this.pos.x=Math.max(-(480-e),Math.min(-e,this.pos.x));this.pos.y=Math.max(-320,Math.min(0,this.pos.y));}
+  // The map (960x640) is drawn at this.zoom; pos.x=-vx, pos.y=vy-320 as in the original, clamped so the map fills the view.
+  minZoom(){return Math.max(.5,C.VIEW.w/960);}
+  fix(){const e=C.VIEW.ext,z=this.zoom,W=960*z,H=640*z;
+    if(W-480-e<e)this.pos.x=-(W-480)/2;else this.pos.x=Math.max(-(W-480-e),Math.min(-e,this.pos.x));
+    if(H<320)this.pos.y=(H-320)/2-320;else this.pos.y=Math.max(-320,Math.min(H-640,this.pos.y));}
   get vx(){return -this.pos.x;}get vy(){return 320+this.pos.y;}
-  toCanvas(mx,my){return [mx-this.vx,640-my-this.vy];}
-  touchBegan(x,y,id){if(!this.active||!this.loaded)return;this.drag={x,y,dist:0,id};}
-  touchMoved(x,y,id){const d=this.drag;if(!d||d.id!==id||!this.active)return;const dx=x-d.x,dy=y-d.y;this.pos.x+=dx;this.pos.y-=dy;d.dist+=Math.abs(Math.trunc(dx))+Math.abs(Math.trunc(dy));d.x=x;d.y=y;this.fix();}
+  toCanvas(mx,my){return [mx*this.zoom-this.vx,(640-my)*this.zoom-this.vy];}
+  toMap(x,y){return [(x+this.vx)/this.zoom,640-(y+this.vy)/this.zoom];}
+  // zoom by a factor keeping the map point under (x,y) fixed
+  zoomBy(f,x,y){const z0=this.zoom,z=Math.max(this.minZoom(),Math.min(2,z0*f));if(z===z0)return;const [mx,my]=this.toMap(x,y);this.zoom=z;this.pos.x=-(mx*z-x);this.pos.y=((640-my)*z-y)-320;this.fix();this.state.lastMapPos={...this.pos};this.state.lastMapScale=this.zoom;}
+  wheel(dy,x,y){if(!this.active||!this.loaded)return;this.zoomBy(dy<0?1.15:1/1.15,x,y);}
+  touchBegan(x,y,id){if(!this.loaded)return;this.touches.set(id,{x,y});
+    if(this.touches.size===2){const [a,b]=[...this.touches.values()];this.pinch={d0:Math.hypot(a.x-b.x,a.y-b.y)||1,z0:this.zoom};this.drag=null;return;}
+    if(!this.active)return;this.drag={x,y,dist:0,id};}
+  touchMoved(x,y,id){const t=this.touches.get(id);if(t){t.x=x;t.y=y;}
+    if(this.pinch&&this.touches.size>=2){const [a,b]=[...this.touches.values()],d=Math.hypot(a.x-b.x,a.y-b.y)||1,mid=[(a.x+b.x)/2,(a.y+b.y)/2];this.zoomBy(this.pinch.z0*d/this.pinch.d0/this.zoom,mid[0],mid[1]);return;}
+    const d=this.drag;if(!d||d.id!==id||!this.active)return;const dx=x-d.x,dy=y-d.y;this.pos.x+=dx;this.pos.y-=dy;d.dist+=Math.abs(Math.trunc(dx))+Math.abs(Math.trunc(dy));d.x=x;d.y=y;this.fix();}
   touchEnded(x,y,id){
+    this.touches.delete(id);if(this.pinch){if(this.touches.size===0)this.pinch=null;this.state.lastMapPos={...this.pos};this.state.lastMapScale=this.zoom;return;}
     const d=this.drag;this.drag=null;if(!d||!this.active)return;const st=this.state;
     if(d.dist<10){
-      const mx=x+this.vx,my=640-(y+this.vy);
+      const [mx,my]=this.toMap(x,y);
       for(const c of this.castles){const [cx,cy]=c.position;if(mx>=cx-40&&mx<=cx+40&&my>=cy-40&&my<=cy+40&&(st.ownsCastle(c.id)||st.pathExistsToCastle(c.id))){sfx('select.wav');this.active=false;this.add(new CastleInfoLayer(st,c,this),10);return;}}
       for(const b of BOATS[this.map]){if(Math.abs(mx-b.x)<=32&&Math.abs(my-b.y)<=32){sfx('select.wav');
         if(b.target===1000){this.active=false;yesNo(this,'Nothing here yet...','Would you be interested in playing more campaigns?',()=>this.reactivate(),()=>this.reactivate());}
@@ -75,20 +90,30 @@ class WorldMapScene extends Scene{
         else message(this,'Fight your way to this ship!','Travel to new lands!',()=>this.reactivate());
         break;}}
     }
-    st.lastMapPos={...this.pos};st.lastMapScale=1;
+    st.lastMapPos={...this.pos};st.lastMapScale=this.zoom;
   }
   tick(dt){if(this.loaded){this.t+=dt;for(const f of this.fx)f.t+=dt;this.fx=this.fx.filter(f=>f.t<.25);}}
   drawSelf(ctx){
-    if(!this.loaded)return;const A=this.atlas,st=this.state,t=this.t;this.wideBackground=false;
-    ctx.drawImage(C.IMG[this.realm.image],-this.vx,-this.vy);
-    for(const f of this.fx){const [x,y]=this.toCanvas(f.x,f.y);drawEntry(ctx,A,f.name,x,y,f.t,{fps:f.fps});}
+    if(!this.loaded)return;const A=this.atlas,st=this.state,t=this.t,z=this.zoom;this.wideBackground=false;
+    ctx.save();ctx.translate(-this.vx,-this.vy);ctx.scale(z,z);   // everything below is in map coordinates
+    const P=(mx,my)=>[mx,640-my];
+    ctx.drawImage(C.IMG[this.realm.image],0,0);
+    for(const f of this.fx){const [x,y]=P(f.x,f.y);drawEntry(ctx,A,f.name,x,y,f.t,{fps:f.fps});}
     const castleName=c=>(st.ownsCastle(c.id)?'CastleOwned':st.pathExistsToCastle(c.id)?'CastleEnemy':'CastleInactive')+(c.flipped?1:2);
-    const ovl=[];
-    for(const c of this.castles){const [x,y]=this.toCanvas(...c.position);if(x<-60-C.VIEW.ext||x>540+C.VIEW.ext||y<-60||y>380)continue;drawEntry(ctx,A,castleName(c),x,y);ovl.push([c,x,y]);}
-    if(this.fake){const c=this.fake,[x,y]=this.toCanvas(...c.position);drawEntry(ctx,A,'CastleEnemy'+(c.flipped?1:2),x,y);ovl.push([c,x,y]);}
-    for(const b of BOATS[this.map]){const [x,y]=this.toCanvas(b.x,b.y);drawEntry(ctx,A,'BoatAnimation',x,y,t,{fps:10});}
+    const ovl=[],lo=(-C.VIEW.ext-60+this.vx)/z,hi=(540+C.VIEW.ext+this.vx)/z,top=(this.vy-60)/z,bot=(this.vy+380)/z;
+    for(const c of this.castles){const [x,y]=P(...c.position);if(x<lo||x>hi||y<top||y>bot)continue;drawEntry(ctx,A,castleName(c),x,y);ovl.push([c,x,y]);}
+    if(this.fake){const c=this.fake,[x,y]=P(...c.position);drawEntry(ctx,A,'CastleEnemy'+(c.flipped?1:2),x,y);ovl.push([c,x,y]);}
+    for(const b of BOATS[this.map]){const [x,y]=P(b.x,b.y);drawEntry(ctx,A,'BoatAnimation',x,y,t,{fps:10});}
     for(const [c,x,y] of ovl){const v=c.flipped?1:2;for(const u of c.upgrades){if(u===0||u===5)drawEntry(ctx,A,'Tower'+v,x,y);else if(u===3)drawEntry(ctx,A,'Seige'+v,x,y);else if(u===2||u===4)drawEntry(ctx,A,`MagicEngine${v}Animation`,x,y,t,{fps:1/.15});}}
-    for(const d of this.dots){if(d.at>=0&&t<d.at)continue;const [x,y]=this.toCanvas(d.x,d.y);const name=d.blue?'PathBlue':'PathRed';if(d.at>=0&&t-d.at<.35)drawEntry(ctx,A,name+'Animation',x,y,t-d.at,{fps:20});else drawEntry(ctx,A,name,x,y);}
+    for(const d of this.dots){if(d.at>=0&&t<d.at)continue;const [x,y]=P(d.x,d.y);const name=d.blue?'PathBlue':'PathRed';if(d.at>=0&&t-d.at<.35)drawEntry(ctx,A,name+'Animation',x,y,t-d.at,{fps:20});else drawEntry(ctx,A,name,x,y);}
+    ctx.restore();
+    // new interface: difficulty stars and hazard icons over the castles you can attack; realm progress at the top
+    if(this.modern){for(const [c,x,y] of ovl){if(st.ownsCastle(c.id)||!st.pathExistsToCastle(c.id))continue;const [sx,sy]=this.toCanvas(...c.position);const stars='*'.repeat(c.difficulty+1),w=stars.length*8+c.elements.length*18+8;
+        ctx.save();ctx.globalAlpha=.55;ctx.fillStyle='#000';ctx.fillRect(Math.floor(sx-w/2),Math.floor(sy-52*z)-8,w,16);ctx.restore();
+        let px=sx-w/2+4;text(ctx,'tiny',stars,px,sy-52*z,{align:'left'});px+=stars.length*8+2;
+        for(const e of c.elements){const ic=ELEMENT_ICON[e];if(ic)sprite(ctx,ic[0],ic[1],px+8,sy-52*z);px+=18;}}
+      const owned=this.castles.filter(c=>st.ownsCastle(c.id)).length,name=REALM_INFO[this.map]?.[0]??'';
+      ctx.save();ctx.globalAlpha=.55;ctx.fillStyle='#000';ctx.fillRect(140,2,200,16);ctx.restore();text(ctx,'tiny',`${name}  ${owned}/${this.castles.length}`,240,10);}
     if(this.arrow)drawEntry(ctx,A,'ArrowAnimation',this.arrow[0],this.arrow[1],t,{fps:10});
   }
   draw(ctx){if(!this.visible)return;this.drawSelf(ctx);for(const c of this.sorted())c.draw(ctx);}
@@ -113,16 +138,28 @@ function fauxCastle(state,dy,{fadeCannon=false}={}){
     if(state.hasUnit(5)){ctx.save();ctx.globalAlpha=Math.min(1,node.cannonAlpha??1);drawEntry(ctx,skin.units,'Cannon',52,172+dy);ctx.restore();}});
   n.tick=dt=>{n.t=(n.t||0)+dt;if(n.cannonAlpha<1)n.cannonAlpha+=dt/.1;};return n;
 }
+// New-interface shop row: icon, name, stat bars and the tech cost on one line; the whole row is the button.
+class RowBtn extends Button{
+  constructor(img,rect,x,y,w,cb,extra){super(img,rect,[rect[0],rect[1]+96,48,48],x,y,cb,{immediate:true,extra});this.rowW=w;this.rowH=32;}
+  hit(px,py){return px>=this.x-this.rowW/2&&px<=this.x+this.rowW/2&&py>=this.y-this.rowH/2&&py<=this.y+this.rowH/2;}
+  drawSelf(ctx){const x0=this.x-this.rowW/2,y0=this.y-this.rowH/2;ctx.save();ctx.globalAlpha*=this.opacity/255;
+    ctx.fillStyle=this.selected?'rgba(255,255,255,.18)':'rgba(0,0,0,.28)';ctx.fillRect(x0,y0,this.rowW,this.rowH);
+    sprite(ctx,this.img,this.selected?this.sel:this.normal,x0+18,this.y,{scale:.7});
+    text(ctx,'tiny',this.name,x0+40,this.y-(this.desc?6:0),{align:'left'});if(this.desc)text(ctx,'tiny',this.desc,x0+40,this.y+7,{align:'left',alpha:.75});
+    if(this.bars){const bx=x0+this.rowW-122;this.bars.forEach(([lab,v],i)=>{const by=this.y-8+i*9;text(ctx,'tiny',lab,bx,by+1,{align:'left',alpha:.8});ctx.fillStyle='#1d1a22';ctx.fillRect(bx+28,by-2,60,5);ctx.fillStyle=i===0?'#ff7a5a':'#5aa7ff';ctx.fillRect(bx+28,by-2,Math.round(60*Math.max(.05,Math.min(1,v))),5);});}
+    text(ctx,'tiny',this.costStr,x0+this.rowW-6,this.y,{align:'right'});this.drawExtra?.(ctx);ctx.restore();}
+}
 class ShopScene extends Scene{
   constructor(state,showTutorial=false){super();this.state=state;this.active=true;this.add(new Img('shopbg.png'));
     const img=D.SKINS[state.playerSkin].left.buttons;this.img=img;
     this.castle=this.add(fauxCastle(state,33),0);
-    this.techLabel=this.add(new Label('white','0',10,70,'left'));
+    this.techLabel=this.add(UI.modern?new Label('tiny','0',440,60,'right'):new Label('white','0',10,70,'left'));
     this.backMenu=this.add(new Menu([this.back=btn('back',240,280,()=>this.cancel())]));
     this.armyMenu=this.add(new Menu());this.refreshArmy();
     const am=new Menu();this.add(am);
-    this.left=am.add(new Button(CON,[48,128,48,48],[48,128,48,48],90,170,()=>{if(!this.active||this.cur<=0)return;sfx('select.wav');this.loadPage(this.cur-1);}));
-    this.right=am.add(new Button(CON,[0,128,48,48],[0,128,48,48],390,170,()=>{if(!this.active||this.cur>=this.pages.length-1)return;sfx('select.wav');this.loadPage(this.cur+1);}));
+    this.modern=UI.modern;const ay=this.modern?280:170,ax=this.modern?[150,330]:[90,390];
+    this.left=am.add(new Button(CON,[48,128,48,48],[48,128,48,48],ax[0],ay,()=>{if(!this.active||this.cur<=0)return;sfx('select.wav');this.loadPage(this.cur-1);}));
+    this.right=am.add(new Button(CON,[0,128,48,48],[0,128,48,48],ax[1],ay,()=>{if(!this.active||this.cur>=this.pages.length-1)return;sfx('select.wav');this.loadPage(this.cur+1);}));
     this.heart=am.add(new Button(img,[48,240,48,48],[48,336,48,48],60,120,b=>this.tap(b),{immediate:true,extra:{kind:'upgrade',id:100}}));
     this.heart.drawExtra=ctx=>text(ctx,'tiny',this.healthPrice(),60,149);
     this.pages=SHOP_PAGES.filter(p=>p.requires===1000||state.upgradesAvailable.includes(p.requires));
@@ -133,11 +170,20 @@ class ShopScene extends Scene{
   refreshArmy(){this.armyMenu.removeAll();for(let i=0;i<8;i++){const id=this.state.units[i];this.armyMenu.add(new Button(this.img,id!==undefined?hudRect(id):[432,240,48,48],id!==undefined?[...hudRect(id).slice(0,1),hudRect(id)[1]+96,48,48]:[432,336,48,48],72+48*i,28,null,{immediate:true}));}}
   loadPage(i){
     this.pageMenu?.remove();this.cur=i;const p=this.pages[i],m=new Menu();this.pageMenu=m;
+    if(this.modern){this.loadRows(p,m);return;}
     m.add(new TextItem('white',p.name,240,120));
     if(p.upgrade!==1000){const r=UPG_RECT[p.upgrade];const b=new Button(this.img,[r[0],r[1],48,48],[r[0],r[1]+96,48,48],240,160,b=>this.tap(b),{immediate:true,extra:{kind:'upgrade',id:p.upgrade}});b.drawExtra=ctx=>text(ctx,'tiny',D.upgradeInfo(p.upgrade).techCost,240,189);m.add(b);}
     p.units.forEach((id,k)=>{const r=hudRect(id);const b=new Button(this.img,r,[r[0],r[1]+96,48,48],140+50*k,220,b=>this.tap(b),{immediate:true,extra:{kind:'unit',id,req:p.unitReq??p.upgrade}});const u=D.unitInfo(id);b.drawExtra=ctx=>text(ctx,'tiny',u.techCost,b.x,249);m.add(b);});
     this.add(m);this.left.opacity=i>0?255:100;this.right.opacity=i<this.pages.length-1?255:100;this.updateButtons();
   }
+  // new interface: one row per item, stats compared at a glance
+  loadRows(p,m){const st=this.state,W=330,cx=275;
+    m.add(new Label('tiny',`${p.name}  (${this.cur+1}/${this.pages.length})`,112,60,'left'));
+    if(p.upgrade!==1000){const r=UPG_RECT[p.upgrade],u=D.upgradeInfo(p.upgrade);const b=new RowBtn(this.img,[r[0],r[1],48,48],cx,78,W,b=>this.tap(b),{kind:'upgrade',id:p.upgrade});b.name=u.name;b.desc=u.description;b.costStr=st.hasUpgrade(p.upgrade)?'owned':`${u.techCost} TP`;m.add(b);}
+    p.units.forEach((id,k)=>{const r=hudRect(id),u=D.unitInfo(id),type=UNIT_KEYS[id],U=type?UNITS[type]:null;
+      const b=new RowBtn(this.img,r,cx,112+34*k,W,b=>this.tap(b),{kind:'unit',id,req:p.unitReq??p.upgrade});b.name=u.name;b.costStr=st.hasUnit(id)?'owned':`${u.techCost} TP`;
+      if(U)b.bars=[['str',U.strength/6],['spd',U.speed/120]];b.desc=`${u.cost} gold${U&&U.flies?', flying':U&&U.tunnel?', tunnel':''}`;m.add(b);});
+    this.add(m);this.left.opacity=this.cur>0?255:100;this.right.opacity=this.cur<this.pages.length-1?255:100;this.updateButtons();}
   updateTech(){this.techLabel.str=`${this.state.techPoints} Tech Points`;}
   canBuyUnit(b){const st=this.state,u=D.unitInfo(b.id);return !st.hasUnit(b.id)&&(b.req===1000||st.hasUpgrade(b.req))&&u.techCost<=st.techPoints;}
   updateButtons(){const st=this.state;
@@ -246,4 +292,4 @@ class CampaignVictoryScene extends Scene{
   }
   exit(){Audio.stopMusic();}
 }
-Object.assign(exports,{WorldMapScene,ShopScene,UnitChangeScene,SkinSelectScene,CampaignResultScene,CampaignVictoryScene});
+Object.assign(exports,{WorldMapScene,ShopScene,UnitChangeScene,SkinSelectScene,CampaignResultScene,CampaignVictoryScene,REALM_INFO});

@@ -20,3 +20,17 @@ def build():
             if q[3] and q in best: out.putpixel((x, y), best[q])
     im.paste(out, (864, 0)); im.save(p); print('ui ok', len(best))
 if __name__ == '__main__': build()
+
+def red_font():
+    """sprites_font_bigred_alpha.png: the big blue font hue-shifted to red (unaffordable prices in the new UI)."""
+    import colorsys
+    src = Image.open(os.path.join(A, 'sprites_font_bigblue_alpha.png')).convert('RGBA'); out = src.copy(); p = out.load()
+    for y in range(out.height):
+        for x in range(out.width):
+            r, g, b, a = p[x, y]
+            if not a: continue
+            h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+            if s > .25: r, g, b = [int(c * 255) for c in colorsys.hsv_to_rgb(0.0, min(1, s * 1.1), v)]
+            p[x, y] = (r, g, b, a)
+    out.save(os.path.join(A, 'sprites_font_bigred_alpha.png'))
+if __name__ == '__main__': red_font()

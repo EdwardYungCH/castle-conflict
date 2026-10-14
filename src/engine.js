@@ -281,8 +281,8 @@ class Battle{
   hitCastle(u){
     const enemy=1-u.side,s=this.sides[enemy],cs=castleStrength(u);
     this.emit('unitHitEnemy',{side:u.side,unitType:u.type,flies:!!UNITS[u.type].flies,castleStrength:cs});
-    s.hp=Math.max(-9999,cs===0?s.hp-1:Math.trunc(s.hp-cs*10));
-    this.emit('castleHit',{side:enemy});
+    const before=s.hp;s.hp=Math.max(-9999,cs===0?s.hp-1:Math.trunc(s.hp-cs*10));
+    this.emit('castleHit',{side:enemy,amount:before-s.hp});
     if(['soldier','strong','cavalry','heavy','dog','golem','ram','mummy','mummyBody','unicorn','berserker','wolf','giant','samurai','burrower','lavaGolem','angel'].includes(u.type))this.attackEffects.push({...u,state:'attack',attackStarted:this.time,expires:this.time+(UNITS[u.type].attackDuration??.3)});
     this.kill(u,'castle');
   }
@@ -424,7 +424,7 @@ class Battle{
       if(p.harmless){if(p.type!=='abandoned'&&p.y>=projectileGroundY(p))this.removeProjectile(p);continue;}
       if(p.type==='skyTree'){if(p.y>=projectileGroundY(p))this.removeProjectile(p);continue;}
       const enemy=1-p.side,pw=p.halfWidth??p.radius,ph=p.halfHeight??p.radius;
-      if(CASTLE_BOXES[enemy].some(b=>overlaps([p.x-pw,p.y-ph,p.x+pw,p.y+ph],b))){this.sides[enemy].hp=Math.trunc(this.sides[enemy].hp-p.power*10);this.emit('castleHit',{side:enemy});this.removeProjectile(p);continue;}
+      if(CASTLE_BOXES[enemy].some(b=>overlaps([p.x-pw,p.y-ph,p.x+pw,p.y+ph],b))){this.sides[enemy].hp=Math.trunc(this.sides[enemy].hp-p.power*10);this.emit('castleHit',{side:enemy,amount:p.power*10});this.removeProjectile(p);continue;}
       if((p.type!=='petard'&&p.y>projectileGroundY(p))||p.x<-64||p.x>544){if(this.bridge&&p.power>=1&&p.x>this.bridge.x0-16&&p.x<this.bridge.x1+16&&p.y>projectileGroundY(p))this.damageBridge(p.power>=4?3:1);this.removeProjectile(p);}
     }
     this.projectiles=this.projectiles.filter(p=>p.alive);
@@ -609,7 +609,7 @@ class Battle{
       const sA=this.power(a,b),sB=this.power(b,a);if(sA===0&&sB===0)continue;
       const aAtt=a.engageUntil>this.time,bAtt=b.engageUntil>this.time,tA=this.sides[0].tieScore,tB=this.sides[1].tieScore;
       const aDies=!bAtt&&(sA<sB||(sA===sB&&!(tA>tB))),bDies=!aAtt&&(sA>sB||(sA===sB&&!(tB>tA)));
-      this.emit('fight',{a:a.type,b:b.type});
+      this.emit('fight',{a:a.type,b:b.type,x:Math.trunc((a.x+b.x)/2),y:Math.trunc((unitY(a)+unitY(b))/2)});
       const winner=aDies&&!bDies?b:bDies&&!aDies?a:null;
       if(winner&&winner.type==='pirate'&&(winner===a?b:a).type!=='pirate'&&!winner.capture){const loser=winner===a?b:a;this.captureAirship(winner,loser);this.sides[winner.side].score.numUnitsKilled++;this.sides[loser.side].score.numUnitsDied++;continue;}
       if(aDies){this.kill(a);this.sides[1].score.numUnitsKilled++;this.sides[0].score.numUnitsDied++;}

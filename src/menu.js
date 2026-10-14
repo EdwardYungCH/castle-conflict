@@ -5,6 +5,7 @@ const D=require("data");
 const X=require("extras");
 const {UNITS,UNIT_KEYS,QUICK_ARMY}=require("engine");
 const {yesNo,message}=require("dialogs");
+const {UI,StoneBtn,TabletBtn}=require("ui");
 const S=()=>require("scenes");
 const fl=Math.floor;
 // FauxGameLayout: grass-scene castles (+ towers)
@@ -31,6 +32,7 @@ class MenuScene extends Scene{
     const L=new Node();this.layer=L;this.add(L,1);
     this.logo=L.add(new Sprite('sprites_title_alpha.png',[0,0,224,96],240,56),0);L.add(fauxLayout(true),2);
     const active=()=>this.active;
+    if(UI.modern){this.buildModern(L,active,fade);return;}
     this.main=new Menu([
       btn('campaign',240,128,()=>{if(!active())return;sfx('select.wav');this.hideMenu();L.add(new SelectCampaignLayer(this),5);}),
       btn('quickPlay',240,181,()=>{if(!active())return;sfx('select.wav');this.hideMenu();L.add(new QuickPlayLayer(this),0);}),
@@ -38,14 +40,40 @@ class MenuScene extends Scene{
       btn('aboutUs',240,287,()=>{if(!active())return;sfx('select.wav');this.hideMenu();this.logo.visible=false;L.add(new CreditsLayer(this),5);}),
       new Button(BTN,[768,384,48,48],[768,432,48,48],40,288,()=>{if(!active())return;sfx('select.wav');Director.replace(new PreviewScene());}),
       new Button(CON,[0,208,48,48],null,40,236,()=>{if(!active())return;sfx('select.wav');Director.replace(new X.RecordsScene());},{scale:.75}),
-      new Button(BTN,[816,384,48,48],[816,432,48,48],440,288,()=>{if(!active())return;sfx('select.wav');Director.replace(new SurveyScene());})]);
+      new Button(BTN,[816,384,48,48],[816,432,48,48],440,288,()=>{if(!active())return;sfx('select.wav');Director.replace(new SurveyScene());}),
+      new TabletBtn('New UI',130,290,()=>{if(!active())return;sfx('select.wav');UI.set(true);Director.replace(new MenuScene());},{w:80})]);
+    L.add(this.main,5);this.active=!fade;
+    if(fade){for(const c of this.main.children){c.opacity=0;c.run(FadeIn(.5));}this.after(.5,()=>{this.active=true;});}
+  }
+  // v3.0 one-page menu: continue the last campaign, the modes with their records, settings and the classic switch.
+  buildModern(L,active,fade){
+    const last=Store.get('lastCampaign',null),st=last&&D.CampaignState.exists(last)?D.CampaignState.load(last):null,started=st&&st.ownsCastle(0);
+    const realm=st?require("campaign").REALM_INFO[st.currentMap]?.[0]??'':'';
+    const q=D.GameScore.load(),stats=X.Stats.load(),ach=X.ACHIEVEMENTS.filter(a=>a[2](stats)).length;
+    this.card=L.add(new DrawNode(ctx=>{UI.panel(ctx,40,104,400,62);
+      if(started){text(ctx,'white',`Campaign ${st.campaignId}`,56,124,{align:'left'});text(ctx,'tiny',`${realm}  -  ${st.numCastlesOwned()}/${st.totalCastles()} castles  -  ${st.techPoints} TP`,56,146,{align:'left'});}
+      else{text(ctx,'white','Campaign',56,124,{align:'left'});text(ctx,'tiny','Conquer the six realms',56,146,{align:'left'});}}),3);
+    const go=f=>()=>{if(!active())return;sfx('select.wav');f();};
+    const files=()=>{this.hideMenu();L.add(new SelectCampaignLayer(this),5);};
+    const cont=()=>{if(!started){files();return;}Director.replace(new (S().WorldMapScene)(st));};
+    const quick=()=>{if(Store.get('quicksave')){this.hideMenu();const o=new Node();o.add(new OverwriteLayer(o));o.add(new Menu([btn('back',240,265,()=>{sfx('select.wav');this.returnFromLayer(o);})]));L.add(o,5);}else startQuick();};
+    this.main=new Menu([
+      new TabletBtn('Files',318,135,go(files),{w:72}),btn(started?'play':'newGame',392,135,go(cont)),
+      new TabletBtn('Quick Play',72,200,go(quick),{sub:q.best?`streak ${q.best}`:'1 player'}),
+      new TabletBtn('Endless',180,200,go(()=>Director.replace(new CampaignLoadingScene(X.endlessParams(),{mimicHome:true,towers:true}))),{sub:stats.endlessBest?`wave ${stats.endlessBest}`:'waves'}),
+      new TabletBtn('Multiplayer',288,200,go(()=>Director.replace(new MPSelectScene())),{sub:'2 players'}),
+      new TabletBtn('Records',396,200,go(()=>Director.replace(new X.RecordsScene())),{sub:`${ach}/${X.ACHIEVEMENTS.length} awards`}),
+      btn('custom',120,266,go(()=>Director.push(new SettingsScene()))),btn('aboutUs',240,266,go(()=>{this.hideMenu();this.logo.visible=false;L.add(new CreditsLayer(this),5);})),
+      new TabletBtn('Classic UI',360,266,go(()=>{UI.set(false);Director.replace(new MenuScene());}),{w:96}),
+      new Button(BTN,[768,384,48,48],[768,432,48,48],40,296,go(()=>Director.replace(new PreviewScene())),{scale:.75}),
+      new Button(BTN,[816,384,48,48],[816,432,48,48],440,296,go(()=>Director.replace(new SurveyScene())),{scale:.75})]);
     L.add(this.main,5);this.active=!fade;
     if(fade){for(const c of this.main.children){c.opacity=0;c.run(FadeIn(.5));}this.after(.5,()=>{this.active=true;});}
   }
   enter(){Audio.playMusic('castleconflict.mp3',false);}
   exit(){Audio.stopMusic();}
-  hideMenu(){this.main.remove();}
-  returnFromLayer(layer){layer.remove();this.layer.add(this.main,5);this.logo.visible=true;}
+  hideMenu(){this.main.remove();if(this.card)this.card.visible=false;}
+  returnFromLayer(layer){layer.remove();this.layer.add(this.main,5);this.logo.visible=true;if(this.card)this.card.visible=true;}
 }
 // ---------------- Quick play ----------------
 function startQuick(){Director.replace(new CampaignLoadingScene(D.quickParams(),{mimicHome:true,towers:true}));}

@@ -63,7 +63,7 @@ class CampaignState{
   static exists(id){return !!Store.get('campaign'+id);}
   static load(id){const d=Store.get('campaign'+id);return new CampaignState(id,d||{});}
   static remove(id){Store.del('campaign'+id);}
-  save(){return Store.set('campaign'+this.campaignId,this);}
+  save(){Store.set('lastCampaign',this.campaignId);return Store.set('campaign'+this.campaignId,this);}
   ownsCastle(i){return !!this.ownedCastles[i];}
   winCastle(i){this.ownedCastles[i]=true;}
   numCastlesOwned(){return this.ownedCastles.filter(Boolean).length;}

@@ -94,7 +94,7 @@ const Director={scene:null,stack:[],paused:false,ctx:null,
   replace(s){this.scene?.exit?.();this.stack.forEach(x=>x.exit?.());this.stack=[];this.scene=s;this.paused=false;Touch.reset();s.enter?.();},
   push(s){this.stack.push(this.scene);this.scene=s;Touch.reset();s.enter?.();},
   pop(){const s=this.scene;s.exit?.();this.scene=this.stack.pop();Touch.reset();this.scene?.resume?.();},
-  update(dt){if(this.scene&&!(this.paused&&this.scene.pausable))this.scene.update(dt);else this.scene?.updateWhilePaused?.(dt);},
+  update(dt){Touch.update();if(this.scene&&!(this.paused&&this.scene.pausable))this.scene.update(dt);else this.scene?.updateWhilePaused?.(dt);},
   draw(ctx){const ext=VIEW.ext;ctx.save();ctx.imageSmoothingEnabled=false;ctx.fillStyle='#000';ctx.fillRect(-ext,0,480+2*ext,320);
     if(this.scene){ctx.save();if(this.scene.shake)ctx.translate(this.scene.shake[0],this.scene.shake[1]);if(ext>0)this.drawWings(ctx,ext);this.scene.draw(ctx);ctx.restore();}ctx.restore();}
   ,
@@ -111,12 +111,14 @@ function allMenus(root){const out=[];const walk=n=>{if(!n.visible&&n.blockWhenHi
 const Touch={claims:new Map(),
   reset(){this.claims.clear();},
   began(id,x,y){const sc=Director.scene;if(!sc)return;
-    for(const m of allMenus(sc)){if(!m.enabled)continue;const it=m.itemAt(x,y);if(it){this.claims.set(id,{menu:m,item:it});it.select();return;}}
+    for(const m of allMenus(sc)){if(!m.enabled)continue;const it=m.itemAt(x,y);if(it){this.claims.set(id,{menu:m,item:it,t:performance.now()});it.select();return;}}
     this.claims.set(id,{scene:true});sc.touchBegan?.(x,y,id);},
   moved(id,x,y){const c=this.claims.get(id);if(!c)return;if(c.scene){Director.scene?.touchMoved?.(x,y,id);return;}
-    const it=c.menu.itemAt(x,y);if(it!==c.item){c.item?.unselect();c.item=it;it?.select();}},
+    if(c.fired)return;const it=c.menu.itemAt(x,y);if(it!==c.item){c.item?.unselect();c.item=it;it?.select();c.t=performance.now();}},
+  // long press: an item with a longPress handler fires it after 450 ms and is not activated on release
+  update(){const now=performance.now();for(const c of this.claims.values())if(c.item&&c.item.longPress&&!c.fired&&!c.item.immediate&&now-c.t>450){c.fired=true;c.item.unselect();c.item.longPress(c.item);}},
   ended(id,x,y){const c=this.claims.get(id);this.claims.delete(id);if(!c)return;if(c.scene){Director.scene?.touchEnded?.(x,y,id);return;}
-    if(c.item){c.item.unselect();if(c.menu.running||c.menu.parent)c.item.activate();}},
+    if(c.item){c.item.unselect();if(c.fired)return;if(c.menu.running||c.menu.parent)c.item.activate();}},
 };
 // ---------- audio ----------
 const Audio_={ctx:null,buffers:{},music:null,musicName:null,muted:false,unlocked:false,pendingMusic:null,volume:{sfx:.55,music:.6},
