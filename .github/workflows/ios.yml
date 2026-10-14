@@ -1,0 +1,60 @@
+name: iOS build (unsigned IPA)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'assets/**'
+      - 'shell.html'
+      - 'build.py'
+      - 'capacitor.config.json'
+      - 'package.json'
+      - 'scripts/**'
+      - 'ios-assets/**'
+      - '.github/workflows/ios.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build web bundle
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+      - name: Create iOS project
+        run: |
+          npx cap add ios
+          sh scripts/ios-patch.sh
+          npx cap sync ios
+      - name: Build (no code signing)
+        run: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+            build | tail -n 40
+      - name: Package IPA
+        run: |
+          cd ios/App/build/Build/Products/Release-iphoneos
+          rm -rf Payload && mkdir Payload && cp -R App.app Payload/
+          zip -qr "$GITHUB_WORKSPACE/CastleConflict-unsigned.ipa" Payload
+          ls -la "$GITHUB_WORKSPACE/CastleConflict-unsigned.ipa"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CastleConflict-unsigned-ipa
+          path: CastleConflict-unsigned.ipa
+      - name: Publish to the "ios-latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view ios-latest >/dev/null 2>&1 || gh release create ios-latest --title "iOS build (unsigned IPA)" --notes "Latest unsigned iOS build. Sign and install with Sideloadly or AltStore. See README." --latest=false
+          gh release upload ios-latest CastleConflict-unsigned.ipa --clobber
