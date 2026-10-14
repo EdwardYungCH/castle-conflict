@@ -20,7 +20,7 @@ function drawCastle(ctx,atlas,side,upgrades,t,{debris=false,dx=0,dy=0}={}){
 }
 function unitAnim(u,battle){
   const unit=UNITS[u.type],stem=unit.sprite,attack=u.state==='attack'||u.engageUntil>battle.time;let anim=stem;
-  if(u.type==='treeCutter'&&u.carrying)anim='TreeTopHarvesterReturnAnimation';else if(u.type==='worm')anim='SandWorm'+u.phase+'Animation';else if(unit.role==='support'&&u.returning)anim=stem+'ReturnAnimation';else if(u.praying&&u.type!=='necro')anim=stem+(u.blessUntil>battle.time?'BlessAnimation':'PrayAnimation');else if(u.type==='witch'&&u.cat)anim='WitchCatWalkAnimation';else if(['fire','ice'].includes(u.type)&&u.returning)anim=stem+'ReturnAnimation';else if(u.type==='cash'&&u.carrying)anim='CashWizardReturnAnimation';else if(unit.flies)anim=stem+'FlyAnimation';else if(u.carrying)anim=stem+'CarryAnimation';else if(attack)anim=u.type==='pike'?'PikemanDefendAnimation':u.type==='ram'?stem+'WalkAnimation':stem+'AttackAnimation';else if(u.state==='walk'||u.state==='return')anim=stem+'WalkAnimation';
+  if(u.type==='treeCutter'&&u.carrying)anim='TreeTopHarvesterReturnAnimation';else if(u.type==='worm')anim='SandWorm'+u.phase+'Animation';else if(unit.role==='support'&&u.returning)anim=stem+'ReturnAnimation';else if(u.praying&&u.type!=='necro')anim=stem+(u.blessUntil>battle.time?'BlessAnimation':'PrayAnimation');else if(u.type==='witch'&&u.cat)anim='WitchCatWalkAnimation';else if(['fire','ice'].includes(u.type)&&u.returning)anim=stem+'ReturnAnimation';else if(u.type==='cash'&&u.carrying)anim='CashWizardReturnAnimation';else if(unit.flies)anim=stem+'FlyAnimation';else if(u.type==='bridger'&&(u.state==='attack'||u.returning))anim=stem+'CarryAnimation';else if(u.carrying)anim=stem+'CarryAnimation';else if(attack)anim=u.type==='pike'?'PikemanDefendAnimation':u.type==='ram'?stem+'WalkAnimation':stem+'AttackAnimation';else if(u.state==='walk'||u.state==='return')anim=stem+'WalkAnimation';
   return {anim,attack};
 }
 function drawUnit(ctx,atlas,u,battle,alpha=1){
@@ -50,7 +50,7 @@ class BattleScene extends Scene{
     const tg=D.TREE_GROWTH[P.treeGrowth]??D.TREE_GROWTH[1];
     const opts={ai:P.mode===2?[false,false]:[false,true],difficulty:P.difficulty,campaign:P.mode===1||!!P.campaign,campaignDifficulty:P.campaignDifficulty??0,globalDifficulty:P.globalDifficulty??0,
       rosters:[P.playerUnits,P.enemyUnits],cannons:P.cannons,hint:P.hint,easyQuick:P.easyQuick,aiFrequency:P.aiFrequency,mode:P.mode,
-      config:{startWood:P.startGold,castleHealth:P.playerHealth,treeChance:tg.treeChance,maxTrees:tg.maxTrees,allowHeals:P.allowHeals,tallTrees:P.elements.includes(1),antlion:P.elements.includes(2),blizzard:P.elements.includes(3),thinIce:P.elements.includes(4),fog:P.elements.includes(5),alwaysFog:!!P.alwaysFog,bridge:P.elements.includes(6),lava:P.elements.includes(7),tunnel:P.elements.includes(8)}};
+      config:{startWood:P.startGold,castleHealth:P.playerHealth,treeChance:tg.treeChance,maxTrees:tg.maxTrees,allowHeals:P.allowHeals,tallTrees:P.elements.includes(1),antlion:P.elements.includes(2),blizzard:P.elements.includes(3),thinIce:P.elements.includes(4),fog:P.elements.includes(5),alwaysFog:!!P.alwaysFog,bridge:P.elements.includes(6),lava:P.elements.includes(7),tunnel:P.elements.includes(8),gaps:P.elements.includes(9),wind:P.elements.includes(10)}};
     this.battle=restore?Battle.restore(restore,opts):new Battle(opts);const b=this.battle;
     if(!restore){b.sides[0].hp=b.sides[0].maxHp=P.playerHealth;b.sides[1].hp=b.sides[1].maxHp=P.enemyHealth;}
     this.skinL=D.SKINS[P.playerSkin].left;this.skinR=D.SKINS[P.mode===2?P.enemySkin:P.enemySkin].right;
@@ -143,7 +143,7 @@ class BattleScene extends Scene{
     const explode=this.schedule(()=>{this.explosions.push({x:Math.trunc(432+R(60)-30),y:Math.trunc(191+R(60)-30),t:0});sfx('explosion.wav');},.1);
     this.after(.9,()=>{this.unschedule(explode);sfx('explosionbig.wav');this.debris[1]=true;b.cannons[1]=false;});
     this.after(2.2,()=>{const wd=require("extras").nextWave(this);this.debris[1]=false;this.explosions=[];this.lastHealth[1]=-1;this.waveBanner={t:0,w:P.wave};
-      if(this.scn.snow!==(wd.realm===2)){this.scn=wd.realm===2?D.SCENERY.snow:D.SCENERY.hill;}
+      this.scn=wd.realm===2?D.SCENERY.snow:wd.realm===5?D.SCENERY.sky:D.SCENERY.hill;this.clouds=(this.scn.clouds||[]).map(f=>{const big=f.endsWith('1.png');return {img:f,y:big?40:112,speed:big?15:8,xs:[240,-240]};});
       this.waveClearing=false;sfx('yay.wav');b.running=true;});
   }
   handleEvents(){
@@ -157,7 +157,7 @@ class BattleScene extends Scene{
         case 'blimp':play(e.unitType==='bomber'?'bomber.wav':e.unitType==='napalm'?'napalmjet.wav':'blimp.wav');break;
         case 'drop':play('bombsaway.wav');break;case 'treeLand':play('treestick.wav');break;case 'fuse':play('petardfuse.wav');break;
         case 'fireball':play('fireball.wav');break;case 'ice':play('ice.wav');break;case 'polymorph':play('polytree.wav');break;case 'witch':play('polymorph.wav');break;
-        case 'bless':play('bless.wav');break;case 'blizzard':play('ice.wav');break;case 'lavaWarn':play('petardfuse.wav');break;case 'erupt':play('explosionbig.wav');break;case 'lavaKill':play('groundkill.wav');break;case 'lavaPool':play('fireball.wav');break;case 'seal':play('treestick.wav');break;case 'sealBroken':play('explosion.wav');break;case 'fog':play('blimp.wav');break;case 'bridgeBreak':play('explosionbig.wav');break;case 'bridgeHit':play('castlehit.wav');break;case 'bridgeFixed':play('treestick.wav');break;case 'stone':play('bombsaway.wav');break;case 'wind':play('bless.wav');break;case 'cranes':play('polymorph.wav');break;case 'craneCatch':play('treechop.wav');break;case 'iceFall':play('ice.wav');play('groundkill.wav');break;case 'crew':play('explosion.wav');break;case 'necro':play('necro.wav');break;case 'worm':play('wurm.wav');break;case 'wormDie':play('wurmdie.wav');break;
+        case 'bless':play('bless.wav');break;case 'blizzard':play('ice.wav');break;case 'lavaWarn':play('petardfuse.wav');break;case 'erupt':play('explosionbig.wav');break;case 'lavaKill':play('groundkill.wav');break;case 'lavaPool':play('fireball.wav');break;case 'seal':play('treestick.wav');break;case 'sealBroken':play('explosion.wav');break;case 'fog':play('blimp.wav');break;case 'bridgeBreak':play('explosionbig.wav');break;case 'bridgeHit':play('castlehit.wav');break;case 'bridgeFixed':play('treestick.wav');break;case 'stone':play('bombsaway.wav');break;case 'wind':play('bless.wav');break;case 'cranes':play('polymorph.wav');break;case 'craneCatch':play('treechop.wav');break;case 'iceFall':play('ice.wav');play('groundkill.wav');break;case 'crew':play('explosion.wav');break;case 'necro':play('necro.wav');break;case 'fall':play('groundkill.wav');break;case 'gust':play('bless.wav');break;case 'bridge':play('treestick.wav');break;case 'dive':play('groundkill.wav');break;case 'bolt':play('fireball.wav');if(e.unitType)play('explosionbig.wav');break;case 'flak':play('buy.wav');break;case 'revive':play('yay.wav');break;case 'worm':play('wurm.wav');break;case 'wormDie':play('wurmdie.wav');break;
         case 'gold':this.floats.push({str:(e.amount>0?'+':'')+e.amount,font:e.amount>0?'tiny':'tinyRed',x:e.x,y:e.y,life:0});break;
         case 'shake':this.shakeT=e.duration;this.shakeM=e.magnitude;break;
         case 'unitHitEnemy':if(e.side===0&&!e.flies&&e.castleStrength>0)this.airOnly=false;if(this.achieve&&e.side===0){const A=this.achieve;const wood=['wood','master'].includes(e.unitType);if(!wood){A.nonWood=true;A.wood=false;}else if(!A.nonWood)A.wood=true;if(!e.flies){A.nonAir=true;A.air=false;}else if(!A.nonAir)A.air=true;if(e.unitType!=='witch'){A.nonWitch=true;A.witch=false;}else if(!A.nonWitch)A.witch=true;if(e.castleStrength>0&&e.unitType!=='worm'){A.nonWorm=true;A.worm=false;}else if(!A.nonWorm)A.worm=true;}break;
@@ -210,6 +210,11 @@ class BattleScene extends Scene{
     if(b.lava){const L=b.lava,FX='spr_under_fx_alpha.png';
       for(const p of L.pools)sprite(ctx,FX,[0,48,36,8],p.x,Math.floor(ground(p.x))-3,{alpha:Math.min(1,(p.until-b.time)/.6)});
       if(L.warnAt!==null){const k=(b.time-L.warnAt);ctx.save();ctx.globalAlpha=.35+.35*Math.sin(k*18);ctx.fillStyle='#ff6a2a';ctx.beginPath();ctx.ellipse(L.warnX,Math.floor(ground(L.warnX))-2,22,5,0,0,Math.PI*2);ctx.fill();ctx.restore();}}
+    if(b.gaps){const FX='spr_sky_fx_alpha.png',img=C.IMG[P.background];
+      for(const g of b.gaps){const gy=Math.floor(ground(g.x)),x0=g.x-g.w/2;
+        ctx.drawImage(img,g.x-4,92,8,4,x0,gy-9,g.w,330-gy);ctx.save();ctx.globalAlpha=.35;ctx.fillStyle='#2a3a5a';ctx.fillRect(x0,gy-9,g.w,6);ctx.restore();   // the island is cut: the sky shows through
+        sprite(ctx,FX,[0,0,40,56],g.x,gy+19);
+        if(g.bridgedUntil>=b.time){const left=g.bridgedUntil-b.time,a=Math.min(1,(b.time-g.builtAt)/.3,left/.8);sprite(ctx,FX,[40,0,44,12],g.x,gy-3,{alpha:a});}}}
     if(b.bridge){const B=b.bridge,y=Math.floor(ground(240));sprite(ctx,'spr_north_fx_alpha.png',[72,48,36,10],240,y-2,{scale:2});
       sprite(ctx,'spr_east_fx_alpha.png',B.broken?[0,14,72,12]:[0,0,72,12],240,y-8);
       if(!B.broken&&B.hp<3)for(let k=0;k<3-B.hp;k++)sprite(ctx,'spr_east_fx_alpha.png',[26,14,20,12],222+18*k,y-8,{alpha:.5});}
@@ -239,7 +244,8 @@ class BattleScene extends Scene{
       for(const u of b.units)if(u.side===s)items.push({id:u.id,draw:()=>drawUnit(ctx,atlas,u,b)});
       for(const u of b.attackEffects)if(u.side===s)items.push({id:u.id+.5,draw:()=>drawUnit(ctx,atlas,u,b)});
       for(const p of b.projectiles)if(p.side===s)items.push({id:p.id,draw:()=>drawProjectile(ctx,atlas,P.sceneryAtlas,p,b)});
-      for(const p of b.skillEffects)if(p.side===s&&p.atlas!=='scenery'){const nap=p.sprite==='BurningNapalmAnimation'&&b.time-p.born>=.9;items.push({id:p.id,draw:()=>drawEntry(ctx,atlas,nap?'FadingNapalmAnimation':p.sprite,p.x,p.y,nap?b.time-p.born-.9:b.time-p.born,{fps:p.fps,anchor:p.anchor??'bottom'})});}
+      for(const p of b.skillEffects)if(p.side===s&&p.fall){const k=(b.time-p.born)/.8;items.push({id:p.id,draw:()=>drawEntry(ctx,atlas,p.sprite,p.x,p.y+Math.round(260*k*k),0,{anchor:'center',flipX:p.flip,alpha:Math.max(0,1-k*k),rotation:(p.flip?-1:1)*40*k})});continue;}
+      for(const p of b.skillEffects)if(p.side===s&&p.atlas!=='scenery'&&!p.fall){const nap=p.sprite==='BurningNapalmAnimation'&&b.time-p.born>=.9;items.push({id:p.id,draw:()=>drawEntry(ctx,atlas,nap?'FadingNapalmAnimation':p.sprite,p.x,p.y,nap?b.time-p.born-.9:b.time-p.born,{fps:p.fps,anchor:p.anchor??'bottom'})});}
       for(const p of b.projectileEffects)if(p.side===s)items.push({id:p.id,draw:()=>drawEntry(ctx,atlas,'ExplosionDefaultAnimation',p.x,p.y,b.time-p.born,{fps:20})});
       items.sort((a,c)=>a.id-c.id).forEach(i=>i.draw());
       if(this.gameOver&&this.loser===s)for(const e of this.explosions)if(e.t<.5)drawEntry(ctx,atlas,'ExplosionDefaultAnimation',e.x,e.y,e.t,{fps:10});
@@ -251,6 +257,11 @@ class BattleScene extends Scene{
       if(ft>0){ctx.save();const g=ctx.createLinearGradient(f.x0-30,0,f.x1+30,0);g.addColorStop(0,'rgba(226,231,238,0)');g.addColorStop(.18,'rgba(226,231,238,.78)');g.addColorStop(.82,'rgba(226,231,238,.78)');g.addColorStop(1,'rgba(226,231,238,0)');
         ctx.globalAlpha=ft;ctx.fillStyle=g;ctx.fillRect(f.x0-30,150,f.x1-f.x0+60,150);
         ctx.fillStyle='#f2f5f8';for(let i=0;i<9;i++){const px=f.x0+20+((i*53+t*(6+i%3*3))%(f.x1-f.x0-40)),py=160+((i*41)%130)+Math.sin(t*.8+i)*4;ctx.globalAlpha=.35*ft;ctx.beginPath();ctx.ellipse(px,py,22+6*(i%3),9,0,0,Math.PI*2);ctx.fill();}
+        ctx.restore();}}
+    // gusts of wind (Sky Realm): white streaks race across the sky
+    if(b.wind){const w=b.wind,on=b.windOn(),wt=on?Math.min(1,(b.time-(w.until-4))/.5,(w.until-b.time)/.5):0;
+      if(wt>0){ctx.save();ctx.fillStyle='#ffffff';const VW=C.VIEW.w,VX=-C.VIEW.ext;
+        for(let i=0;i<14;i++){const h=(i*2654435761)>>>0,len=26+(h%30),y=70+((h>>>8)%150),sp=260+(h%90);const x=VX+((((h%VW)+w.dir*sp*t)%VW)+VW)%VW;ctx.globalAlpha=.55*wt*(i%3?1:.6);ctx.fillRect(Math.floor(x),y,len,i%4?1:2);}
         ctx.restore();}}
     // foreground (tall tree tops z-3, antlion z0, trunks z3)
     if(b.tallTrees.length||b.antlion){const FG='EgyptianForeground';

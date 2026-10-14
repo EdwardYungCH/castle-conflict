@@ -86,7 +86,17 @@ def mushroom(img, x, y, s, DARK):
     d = ImageDraw.Draw(img); r = int(7 * s)
     d.arc([x - r, y - 2 * r, x + r, y], 180, 360, fill=DARK, width=2); d.line([(x, y - r), (x, y)], fill=DARK, width=2)
 
-GLYPHS = {'stalagmite': stalagmite, 'crystal': crystal, 'mushroom': mushroom, 'tree': tree, 'mountain': mountain, 'snowflake': lambda i, x, y, s, D: snowflake(i, x, y, D), 'bamboo': bamboo, 'pagoda': pagoda, 'volcano': volcano, 'terrace': terrace}
+def cloud(img, x, y, s, DARK):
+    d = ImageDraw.Draw(img); r = int(7 * s)
+    for dx, rr in ((-r, r - 2), (0, r), (r, r - 3)): d.ellipse([x + dx - rr, y - rr, x + dx + rr, y + rr], outline=DARK)
+    d.line([(x - 2 * r, y + 2), (x + 2 * r, y + 2)], fill=DARK, width=1)
+
+def spire(img, x, y, s, DARK):
+    d = ImageDraw.Draw(img); h = int(24 * s)
+    d.line([(x - 3, y), (x - 3, y - h), (x, y - h - 6), (x + 3, y - h), (x + 3, y)], fill=DARK, width=1)
+    d.line([(x - 6, y), (x + 6, y)], fill=DARK, width=2)
+
+GLYPHS = {'cloud': cloud, 'spire': spire, 'stalagmite': stalagmite, 'crystal': crystal, 'mushroom': mushroom, 'tree': tree, 'mountain': mountain, 'snowflake': lambda i, x, y, s, D: snowflake(i, x, y, D), 'bamboo': bamboo, 'pagoda': pagoda, 'volcano': volcano, 'terrace': terrace}
 
 # ---- realms ----
 NORTH = dict(
@@ -124,7 +134,8 @@ def build(R):
     px = np.array(img)
     water = np.zeros((H, W), bool)
     for poly, seed in R['sea']: water |= mask(noisy(poly, 9, seed=seed))
-    lake = mask(noisy(R['lake'][0], 6, seed=R['lake'][1]))
+    lake = mask(noisy(R['lake'][0], 6, seed=R['lake'][1])) if not R.get('islands') else np.zeros((H, W), bool)
+    if R.get('islands'): water = ~islands_mask(R)
     px[water] = LAVA if LAVA else MID; px[edge(water)] = DARK
     if R['ice_cracks']: px[lake] = BASE; px[edge(lake, 1)] = DARK
     else: px[lake] = MID; px[edge(lake, 1)] = DARK
@@ -137,13 +148,17 @@ def build(R):
             pts = [(x, y)]
             for _ in range(3): x += r.randint(-9, 9); y += r.randint(-5, 5); pts.append((x, y))
             if all(0 <= p[1] < H and 0 <= p[0] < W and lake[int(p[1]), int(p[0])] for p in pts): d.line(pts, fill=MID, width=1)
-    for _ in range(160):
+    for _ in range(0 if R.get('islands') else 160):
         x, y = rnd.randint(10, W - 10), rnd.randint(10, H - 10)
         if (water | lake)[y - 6:y + 7, x - 9:x + 10].all(): wave(img, x, y, DARK)
     POS = {i: (x, y) for i, x, y in R['castles']}; paths = {(a, b): path_points(POS, a, b) for a, b in R['links']}
     keep_out = [(c[1], c[2]) for c in R['castles']]
     def free(x, y, r):
-        if (water | lake)[max(0, y - 30):y + 8, max(0, x - 14):x + 14].any(): return False
+        if R.get('islands'):
+            if kind == 'cloud':
+                if not water[max(0, y - 14):y + 14, max(0, x - 22):x + 22].all(): return False
+            elif water[max(0, y - 30):y + 8, max(0, x - 14):x + 14].any(): return False
+        elif (water | lake)[max(0, y - 30):y + 8, max(0, x - 14):x + 14].any(): return False
         if any(math.hypot(x - px_, y - py) < 16 for pts in paths.values() for px_, py in pts): return False
         return all(math.hypot(x - a, y - b) > r for a, b in keep_out)
     for kind, tries, where, dens, rad, sc in R['scenery']:
@@ -171,7 +186,8 @@ def data(R):
     castles = {i: tomap((x, y)) for i, x, y in R['castles']}
     conns = [{'from': a, 'to': b, 'points': [tomap(p) for p in paths[(a, b)]], 'mapLink': False} for a, b in R['links']]
     s = R['start']; conns.insert(0, {'from': s[0], 'to': s[1], 'points': [tomap(p) for p in s[2]], 'mapLink': True, 'start': True})
-    e = R['exit']; conns.append({'from': e[0], 'to': e[1], 'points': [tomap(p) for p in e[2]], 'mapLink': True})
+    e = R['exit']
+    if e: conns.append({'from': e[0], 'to': e[1], 'points': [tomap(p) for p in e[2]], 'mapLink': True})
     return {'castles': castles, 'connections': conns}
 
 def write_js(R):
@@ -190,8 +206,30 @@ UNDER = dict(
     scenery=[('stalagmite', 500, None, 0.3, 40, (.7, 1.2)), ('crystal', 250, None, 0.25, 40, (.8, 1.2)), ('mushroom', 300, lambda x, y: y > 300, 0.3, 30, (.7, 1.0))],
     start=(71, 3, [(100, 455), (80, 480)]), exit=(86, 1000, [(915, 110), (935, 90)]))
 
+SKY = dict(
+    name='SKY', file='Map6.png', js='sky-map.js', colors=((170, 200, 232), (206, 224, 244), (84, 104, 150)), islands=True,
+    # open sky (painted MID = pale) between the islands; the islands keep the BASE colour
+    sea=[([(-40, -40), (1000, -40), (1000, 700), (-40, 700)], 31)],
+    lake=([(0, 0), (1, 0), (1, 1)], 32), ice_cracks=False,
+    castles=[(87, 110, 470), (88, 230, 540), (89, 260, 380), (90, 120, 300), (91, 390, 470), (92, 400, 290), (93, 280, 190), (94, 520, 380),
+             (95, 560, 540), (96, 540, 210), (97, 430, 100), (98, 690, 450), (99, 700, 290), (100, 650, 120), (101, 840, 380), (102, 850, 160)],
+    links=[(87, 88), (87, 90), (88, 89), (89, 90), (88, 91), (89, 92), (90, 93), (91, 94), (92, 94), (92, 93), (93, 97), (94, 95), (94, 96), (96, 97), (95, 98), (96, 99), (98, 99), (97, 100), (99, 101), (100, 102), (101, 102), (99, 100)],
+    scenery=[('cloud', 400, None, 0.35, 40, (.8, 1.3)), ('spire', 120, None, 0.2, 40, (.7, 1.0))],
+    start=(87, 4, [(84, 492), (66, 512)]), exit=None)
+
+def islands_mask(R):
+    """One blob of land around every castle plus a strip along each link."""
+    m = Image.new('L', (W, H), 0); d = ImageDraw.Draw(m); r = random.Random(5)
+    for i, x, y in R['castles']:
+        for _ in range(5):
+            rx, ry = r.randint(36, 56), r.randint(24, 38); dx, dy = r.randint(-16, 16), r.randint(-10, 10)
+            d.ellipse([x + dx - rx, y + dy - ry, x + dx + rx, y + dy + ry], fill=255)
+    POS = {i: (x, y) for i, x, y in R['castles']}
+    for a, b in R['links']: d.line([POS[a], POS[b]], fill=255, width=16)
+    return np.array(m) > 0
+
 def build_all():
-    for R in (NORTH, EAST, UNDER): build(R); write_js(R)
+    for R in (NORTH, EAST, UNDER, SKY): build(R); write_js(R)
 
 if __name__ == '__main__':
     build_all(); print('maps ok')

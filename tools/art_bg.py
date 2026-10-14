@@ -200,3 +200,40 @@ def build_under():
         im = Image.open(os.path.join(A, src))
         out = cave(im, i + 1) if not dst.startswith('under_victory') else hsv_map(im, lambda h, s, v, x, y: (np.where(s > .2, .05, h), s, v * .8))
         out.convert('RGB').save(os.path.join(A, dst), optimize=True)
+
+# ---------------------------------------------------------------- Sky Realm
+def floating(im, seed=1, tint=None, sky=((150, 200, 240), (225, 238, 250))):
+    """Cut the ground into a floating island: below the ground curve + a rocky underside there is only sky."""
+    r = random.Random(seed)
+    if tint: im = hsv_map(im, tint)
+    a = np.asarray(im.convert('RGBA')).astype(np.float32); H, W = a.shape[:2]
+    xx = np.arange(W); g = 278 + 30 * np.sin(np.pi * (xx - 80) / 304)
+    rock = np.array([18 + 6 * math.sin(x * .07 + seed) + r.randint(0, 3) for x in range(W)])
+    yy = np.arange(H)[:, None]
+    t = np.clip((yy - 200) / 120, 0, 1); top, bot = np.array(sky[0]), np.array(sky[1])
+    grad = (top[None, None, :] * (1 - t[..., None]) + bot[None, None, :] * t[..., None])
+    below = yy > (g + rock)[None, :]
+    a[..., :3] = np.where(below[..., None], grad, a[..., :3])
+    under = (yy > (g + 4)[None, :]) & ~below
+    shade = np.clip((yy - g[None, :] - 4) / rock[None, :], 0, 1)
+    rockcol = np.stack([110 - 50 * shade, 86 - 40 * shade, 60 - 30 * shade], -1)
+    a[..., :3] = np.where(under[..., None], rockcol, a[..., :3])
+    out = Image.fromarray(a.round().astype(np.uint8), 'RGBA'); d = __import__('PIL.ImageDraw', fromlist=['ImageDraw']).Draw(out)
+    for _ in range(7):   # clouds drifting below the island
+        x, y, w = r.randint(-20, 480), r.randint(300, 318), r.randint(30, 70)
+        for k in range(3): d.ellipse([x + k * w // 3 - w // 4, y - 6 - (k % 2) * 4, x + k * w // 3 + w // 4, y + 6], fill=(255, 255, 255, 255))
+    return out
+
+_warm = lambda h, s, v, x, y: (h, s, v)
+_dawn = lambda h, s, v, x, y: (np.where((h > .5) & (h < .7) & (s < .5), .08, h), np.where((h > .5) & (h < .7) & (s < .5), .35, s), v)
+_storm = lambda h, s, v, x, y: (h, s * .5, v * .8)
+_night = lambda h, s, v, x, y: (np.where((h > .5) & (h < .7) & (s < .5), .68, h), s, v * .7)
+SKY_BG = {'bg_sky_meadow.png': ('bg_grass.png', None, ((150, 200, 240), (225, 238, 250))), 'bg_sky_meadow2.png': ('bg_grass2.png', None, ((150, 200, 240), (225, 238, 250))),
+          'bg_sky_forest.png': ('bg_forest1.png', None, ((140, 190, 235), (220, 234, 248))), 'bg_sky_plains.png': ('bg_plains.png', None, ((150, 200, 240), (225, 238, 250))),
+          'bg_sky_peaks.png': ('bg_mountains.png', None, ((130, 180, 230), (215, 230, 246))), 'bg_sky_river.png': ('bg_river.png', None, ((150, 200, 240), (225, 238, 250))),
+          'bg_sky_dawn.png': ('bg_sunset.png', _dawn, ((250, 190, 140), (255, 230, 200))), 'bg_sky_dusk.png': ('bg_forestsunset.png', _dawn, ((240, 170, 130), (255, 222, 190))),
+          'bg_sky_storm.png': ('bg_mountainsunset.png', _storm, ((90, 100, 130), (160, 170, 190))), 'bg_sky_night.png': ('bg_watersunset.png', _night, ((40, 50, 110), (90, 100, 160))),
+          'sky_victory.png': ('victory.png', None, ((150, 200, 240), (225, 238, 250))), 'sky_victory_night.png': ('victory_night.png', None, ((40, 50, 110), (90, 100, 160)))}
+def build_sky():
+    for i, (dst, (src, tint, sky)) in enumerate(SKY_BG.items()):
+        floating(Image.open(os.path.join(A, src)), i + 1, tint, sky).convert('RGB').save(os.path.join(A, dst), optimize=True)

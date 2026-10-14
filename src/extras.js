@@ -29,6 +29,10 @@ const ACHIEVEMENTS=[
  ['Homeland Hero','Conquer the Medieval Realm',s=>!!s.flags.realm0],
  ['Pharaoh','Conquer the Egyptian Realm',s=>!!s.flags.realm1],
  ['Frost King','Conquer the Northern Realm',s=>!!s.flags.realm2],
+ ['Shogun','Conquer the Eastern Realm',s=>!!s.flags.realm3],
+ ['Deep Thane','Conquer the Underworld',s=>!!s.flags.realm4],
+ ['Sky Lord','Conquer the Sky Realm',s=>!!s.flags.realm5],
+ ['World Conqueror','Conquer all six realms',s=>!!s.flags.allRealms],
  ['Lumberjack','Harvest 1000 trees',s=>s.trees>=1000],
  ['Warlord','Kill 1000 enemy units',s=>s.unitsKilled>=1000],
  ['Pickpocket','Steal 500 gold',s=>s.stolen>=500],
@@ -50,8 +54,8 @@ class RecordsScene extends Scene{
     am.add(btn('back',240,290,()=>{sfx('select.wav');Director.replace(new (require("menu").MenuScene)());}));
     this.show(0);
   }
-  show(p){this.page=Math.max(0,Math.min(2,p));this.body?.remove();const B=new Node();this.body=B;this.add(B,1);const s=this.stats,q=D.GameScore.load();
-    this.l.opacity=this.page>0?255:100;this.r.opacity=this.page<2?255:100;
+  show(p){const last=Math.ceil(ACHIEVEMENTS.length/8);this.page=Math.max(0,Math.min(last,p));this.body?.remove();const B=new Node();this.body=B;this.add(B,1);const s=this.stats,q=D.GameScore.load();
+    this.l.opacity=this.page>0?255:100;this.r.opacity=this.page<last?255:100;
     if(this.page===0){B.add(new Label('tiny','Statistics',240,50));
       const rows=[['Battles fought',s.battles],['Battles won',s.wins],['Quick play best streak',q.best],['Quick play wins / losses',`${q.numTotalWins} / ${q.numTotalLosses}`],['Endless best',s.endlessBest?`Wave ${s.endlessBest}`:'-'],['Endless runs',s.endlessRuns],['Units bought',s.unitsBought],['Enemies killed',s.unitsKilled],['Units lost',s.unitsLost],['Trees harvested',s.trees],['Gold stolen',s.stolen],['Gold spent',s.goldSpent]];
       rows.forEach(([k,v],i)=>{B.add(new Label('tiny',k,120,75+16*i,'left'));B.add(new Label('tiny',String(v),360,75+16*i,'right'));});
@@ -64,17 +68,18 @@ class RecordsScene extends Scene{
 }
 
 // ---------- Endless mode ----------
-const WAVE_POOL=['wood','soldier','strong','dog','thief','cavalry','zeppelin','archer','pike','petard','heavy','bomber','golem','ice','fire','ram','master','mummy','necro','cannon','grappler','wolves','berserker','napalm','giant','longship','rune','wormPriest','ninja','samurai','dancer','caster','trebuchet','bats','lavaGolem'];
+const WAVE_POOL=['wood','soldier','strong','dog','thief','cavalry','zeppelin','archer','pike','petard','heavy','bomber','golem','ice','fire','ram','master','mummy','necro','cannon','grappler','wolves','berserker','napalm','giant','longship','rune','wormPriest','ninja','samurai','dancer','caster','trebuchet','bats','lavaGolem','angel','thunder','griffin','battleship'];
 const BGS=[['bg_grass.png','bg_forest1.png','bg_plains.png','bg_river.png','bg_mountains.png','bg_water2.png','bg_sunset.png'],
  ['bg_egypt_desert1.png','bg_egypt_nile2.png','bg_egypt_grass1.png','bg_egypt_desert4.png','bg_egypt_sunset1.png','bg_egypt_night1.png'],
  ['bg_north_hills.png','bg_north_forest.png','bg_north_fjord.png','bg_north_mountains.png','bg_north_aurora.png','bg_north_aurora_peaks.png'],
  ['bg_east_bamboo.png','bg_east_terrace.png','bg_east_coast.png','bg_east_volcano.png','bg_east_bamboo2.png','bg_east_sunset.png'],
- ['bg_under_cavern.png','bg_under_fungus.png','bg_under_lavariver.png','bg_under_crystal.png','bg_under_forge.png','bg_under_abyss.png']];
+ ['bg_under_cavern.png','bg_under_fungus.png','bg_under_lavariver.png','bg_under_crystal.png','bg_under_forge.png','bg_under_abyss.png'],
+ ['bg_sky_meadow.png','bg_sky_forest.png','bg_sky_peaks.png','bg_sky_dawn.png','bg_sky_storm.png','bg_sky_night.png']];
 function waveDef(w){
   const n=Math.min(WAVE_POOL.length,3+Math.floor((w-1)*1.5));let pool=WAVE_POOL.slice(0,n);
   const roster=['wood',...pool.filter(t=>t!=='wood').slice(-7)];
-  const realm=w<=6?0:w<=12?1:w<=18?2:w<=24?3:4;
-  return {roster,hp:Math.min(400,60+25*w),gold:15+5*w,aiFrequency:Math.max(.45,2.6-.17*w),campaignDifficulty:w<4?0:w<9?1:2,realm,background:BGS[realm][(w-1)%BGS[realm].length],skin:[0,1,3,4,5][realm]};
+  const realm=w<=6?0:w<=12?1:w<=18?2:w<=24?3:w<=30?4:5;
+  return {roster,hp:Math.min(400,60+25*w),gold:15+5*w,aiFrequency:Math.max(.45,2.6-.17*w),campaignDifficulty:w<4?0:w<9?1:2,realm,background:BGS[realm][(w-1)%BGS[realm].length],skin:[0,1,3,4,5,6][realm]};
 }
 function endlessParams(settings=D.Settings.load()){
   const wd=waveDef(1);
@@ -102,4 +107,19 @@ class EndlessResultScene extends Scene{
     this.add(new Menu([btn('replay',150,270,()=>{sfx('select.wav');Director.replace(new (require("menu").CampaignLoadingScene)(endlessParams(),{mimicHome:true,towers:true}));}),btn('mainMenu',330,270,()=>{sfx('select.wav');Director.replace(new (require("menu").MenuScene)());})]),1);
   }
 }
-Object.assign(exports,{textBtn,Stats,ACHIEVEMENTS,RecordsScene,endlessParams,nextWave,waveDef,EndlessResultScene});
+// ---------- the ending (all six realms conquered) ----------
+class FinalEndingScene extends Scene{
+  constructor(st){super();Stats.flag('allRealms');const s=Stats.load();Audio.playMusic('ccwin.mp3',false);
+    this.add(new Img('sky_victory_night.png'));for(const x of [160,320])this.add(new Sprite('sprites_banners_alpha.png',[160,0,160,320],x,160),0);
+    const lines=[['white','The six realms are one',240,28]];
+    const realms=D.CONTENT.maps.map(m=>[m.name,m.castles.filter(c=>st.ownsCastle(c.id)).length,m.castles.length]);
+    realms.forEach(([name,n,t],i)=>{lines.push(['tiny',name,130,62+16*i,'left']);lines.push(['tiny',`${n} / ${t}`,350,62+16*i,'right']);});
+    lines.push(['tiny',`Battles ${st.numBattles}  Victories ${st.numVictories}  Rank: ${D.RANKS(st.numBattles?st.numVictories/st.numBattles:0)}`,240,166]);
+    lines.push(['tiny',`${s.unitsKilled} enemies slain, ${s.unitsBought} units raised`,240,182]);lines.push(['tiny',`${s.trees} trees felled, ${s.stolen} gold stolen`,240,196]);
+    lines.push(['white','Thank you for playing!',240,220]);lines.push(['tiny','Castle Conflict - The End',240,240]);
+    lines.forEach(([font,str,x,y,al],i)=>{const l=new Label(font,str,x,y,al);l.opacity=0;this.add(l,1);this.after(.6+i*.35,()=>{l.run(C.FadeIn(.5));if(i%2===0)sfx('select.wav');});});
+    this.after(1+lines.length*.35,()=>this.add(new Menu([btn('map',150,285,()=>{sfx('select.wav');Audio.stopMusic();Director.replace(new (require("campaign").WorldMapScene)(st));}),btn('mainMenu',330,285,()=>{sfx('select.wav');Audio.stopMusic();Director.replace(new (require("menu").MenuScene)());})]),2));
+  }
+  exit(){Audio.stopMusic();}
+}
+Object.assign(exports,{textBtn,Stats,ACHIEVEMENTS,RecordsScene,endlessParams,nextWave,waveDef,EndlessResultScene,FinalEndingScene});

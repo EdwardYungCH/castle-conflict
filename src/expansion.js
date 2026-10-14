@@ -17,6 +17,7 @@ const {UNIT_GEOMETRY}=require("unit-geometry");
 const {NORTH_MAP}=require("north-map");
 const {EAST_MAP}=require("east-map");
 const {UNDER_MAP}=require("under-map");
+const {SKY_MAP}=require("sky-map");
 
 // ---------- Part 1 ----------
 const page=(name,req)=>CONTENT.shopPages.find(p=>p.name===name&&p.requires===req);
@@ -199,4 +200,60 @@ for(const a of ['playerStandard','playerEgyptian'])Object.assign(ATLASES[a].entr
 for(const a of ['computerMedieval','computerEgyptian'])Object.assign(ATLASES[a].entries,underEntries('spr_under_red_alpha.png'));
 Object.assign(UNIT_GEOMETRY,{miner:[-8,-12,8,12],burrower:[-16,-8,16,8],lavaGolem:[-12,-16,12,16],bat:[-12,-5,12,5],dwarf:[-8,-12,8,12]});
 const UNDER_CASTLE_IDS=underCastles.map(c=>c.id);
-Object.assign(exports,{CONTENT,NORTH_CASTLE_IDS,EAST_CASTLE_IDS,UNDER_CASTLE_IDS});
+
+// ======================================================================
+// Part 5 - the Sky Realm (v2.5, the final chapter): 16 castles (ids 87-102), the Observatory
+//   upgrade (9), units 55-59, the Sky Spire appearance (skin 6), element 9 = gaps between the
+//   floating islands (ground units fall unless a cloud bridge is built), element 10 = gusts of wind
+//   that push every airship sideways. Seraphiel the Last (102) fields units from all six realms.
+CONTENT.units.push(
+ {id:55,name:'Cloud Bridge Builder',description:'Builds a cloud bridge over a gap (20 sec)',cost:20,techCost:6,internal:false,hud:[144,576]},
+ {id:56,name:'Griffin Rider',description:'Flies, and dives on weak ground units below',cost:55,techCost:15,internal:false,hud:[192,576]},
+ {id:57,name:'Thundercloud Mage',description:'Calls lightning down on the strongest enemy',cost:50,techCost:15,internal:false,hud:[240,576]},
+ {id:58,name:'Angel Guard',description:'Hovers over gaps and returns once from death',cost:45,techCost:11,internal:false,hud:[288,576]},
+ {id:59,name:'Sky Battleship',description:'Heavy bomber with a flak turret',cost:90,techCost:20,internal:false,hud:[336,576]});
+CONTENT.upgrades.push({id:9,name:'Observatory',description:'Allows purchase of sky units.',techCost:11});
+CONTENT.shopPages.push({name:'Sky Units',units:[55,58,57,56,59],upgrade:9,requires:9});
+const SBG=n=>`bg_sky_${n}.png`;
+const SKY_CASTLES=[
+ [87,'Archon Lior the Gate',260,45,6,1,1,'meadow',[2,0,55,58,1],[9],[9]],
+ [88,'Archon Nessa the Breeze',270,25,6,1,2,'forest',[2,16,55,58,17,15],[9,3],[10]],
+ [89,'Archon Tavi the Bridge',270,45,6,1,1,'meadow2',[2,0,55,56,58,13],[9,0],[9]],
+ [90,'Archon Ilan the Wall',250,15,11,1,1,'plains',[2,16,55,58,11,1],[9,3],[9,10]],
+ [91,'Archon Ziva the Swift',250,10,11,1,2,'river',[2,21,55,56,4,15],[9,0],[10]],
+ [92,'Archon Oren the Lost',300,30,11,2,0,'storm',[2,16,24,26,57,55,10],[9,4,2],[9,10]],
+ [93,'Archon Dafna the Greedy',280,30,11,2,1,'meadow',[2,3,55,58,18,42],[9,2,7],[9]],
+ [94,'Archon Eitan the Thunder',330,45,11,2,1,'peaks',[2,16,57,13,12,33,0,10],[9,2,0],[10]],
+ [95,'Archon Mira the Black',290,12,11,2,2,'dusk',[2,16,55,58,0,5],[9,0,3],[9,10]],
+ [96,'Archon Gil the Watcher',320,25,15,2,1,'peaks',[2,16,56,59,24,26,55],[9,4,0],[9]],
+ [97,'Archon Rafi the Red',330,30,15,2,1,'dawn',[2,16,57,36,33,19,5],[9,0,5],[10]],
+ [98,'Archon Tamar the Wise',330,20,15,2,2,'forest',[2,16,55,58,39,12,13],[9,2,6],[9,10]],
+ [99,'Archon Boaz the Stout',320,20,15,2,1,'meadow2',[2,16,38,58,55,0],[9,3,2,8],[9]],
+ [100,'Archon Shira the Storm',350,25,15,2,2,'storm',[2,16,56,9,43,21,55,5],[9,3,0,7],[9,10]],
+ [101,'Archon Amos the Old',350,20,18,2,1,'night',[2,16,59,44,58,55,0],[9,3,0,2,7],[9,10]],
+ [102,'Seraphiel the Last',600,35,25,2,1,'dawn',[2,43,38,50,58,59,57,55],[9,0,2,3,4,5,6,7,8],[9,10]]];
+const skyCastles=SKY_CASTLES.map(([id,name,health,gold,techReward,difficulty,treeGrowth,bg,units,upgrades,elements],i)=>({
+  id,name,position:SKY_MAP.castles[id],health,gold,techReward,difficulty,treeGrowth,flipped:i%2===0,background:SBG(bg),skin:6,
+  units,upgrades,allowsHeals:false,attackGround:true,attackAir:true,elements,...(id===102?{aiFrequency:.45}:{})}));
+CONTENT.maps.push({id:5,name:'Sky Realm',image:'Map6.png',castles:skyCastles,connections:SKY_MAP.connections});
+CONTENT.maps[4].connections.find(c=>c.from===86&&c.to===1000).to=5;
+CONTENT.version='1.85+sky';
+ATLASES.SkyPlayer=clone('CastlePlayer','spr_sky_castles_alpha.png');
+ATLASES.SkyEnemy=clone('CastleEnemy','spr_sky_castles_alpha.png');
+ATLASES.WorldMapSky=clone('WorldMap','sky_mapcastles_alpha.png');
+function skyEntries(texture){
+  const e={
+   Bridger:anim('Bridger',0,0,16,24),BridgerWalkAnimation:anim('BridgerWalk',0,0,16,24,4),BridgerCarryAnimation:anim('BridgerCarry',64,0,16,24,4),
+   Griffin:anim('Griffin',0,24,64,48),GriffinFlyAnimation:anim('GriffinFly',0,24,64,48,3),
+   Thunder:anim('Thunder',0,72,16,36),ThunderWalkAnimation:anim('ThunderWalk',0,72,16,36,4),ThunderAttackAnimation:anim('ThunderAttack',64,72,32,36,1),ThunderReturnAnimation:anim('ThunderReturn',96,72,16,36,4),
+   Angel:anim('Angel',0,108,24,32),AngelWalkAnimation:anim('AngelWalk',0,108,24,32,4),AngelAttackAnimation:anim('AngelAttack',96,108,24,32,3,{Looping:false,RevertWhenOver:true}),
+   Battleship:anim('Battleship',0,140,64,48),BattleshipFlyAnimation:anim('BattleshipFly',0,140,64,48,2)};
+  for(const v of Object.values(e))v.texture=texture;
+  e.BoltAnimation=anim('Bolt',0,56,24,120,3,{texture:'spr_sky_fx_alpha.png'});
+  return e;
+}
+for(const a of ['playerStandard','playerEgyptian'])Object.assign(ATLASES[a].entries,skyEntries('spr_sky_blue_alpha.png'));
+for(const a of ['computerMedieval','computerEgyptian'])Object.assign(ATLASES[a].entries,skyEntries('spr_sky_red_alpha.png'));
+Object.assign(UNIT_GEOMETRY,{bridger:[-8,-12,8,12],griffin:[-24,-16,24,16],thunder:[-8,-18,8,18],angel:[-10,-16,10,16],battleship:[-32,-24,32,24]});
+const SKY_CASTLE_IDS=skyCastles.map(c=>c.id);
+Object.assign(exports,{CONTENT,NORTH_CASTLE_IDS,EAST_CASTLE_IDS,UNDER_CASTLE_IDS,SKY_CASTLE_IDS});

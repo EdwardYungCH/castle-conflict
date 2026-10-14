@@ -8,13 +8,14 @@ const {drawCastle}=require("battle");
 const M=()=>require("menu");
 const fl=Math.floor;
 const hudRect=(id,img)=>{const u=D.unitInfo(id);return [u.hud[0],u.hud[1],48,48];};
-const UPG_RECT={0:[432,0],1:[432,48],2:[432,192],3:[384,240],4:[0,384],5:[48,384],6:[96,384],7:[0,432],8:[288,432],100:[48,240]}; // 4-6: expansion icons (HUD rows 384+)
+const UPG_RECT={0:[432,0],1:[432,48],2:[432,192],3:[384,240],4:[0,384],5:[48,384],6:[96,384],7:[0,432],8:[288,432],9:[96,576],100:[48,240]}; // 4-6: expansion icons (HUD rows 384+)
 const BOATS=[[{x:518,y:46,target:1,cam:[80,555]}],[{x:80,y:555,target:0,cam:[528,46],start:true},{x:903,y:165,target:2,cam:[72,112]}],
   [{x:72,y:112,target:1,cam:[903,165],start:true},{x:925,y:592,target:3,cam:[60,100]}], // [2]: Northern Realm (expansion)
   [{x:60,y:100,target:2,cam:[925,592],start:true},{x:935,y:600,target:4,cam:[80,160]}], // [3]: Eastern Realm
-  [{x:80,y:160,target:3,cam:[935,600],start:true},{x:925,y:540,target:1000,cam:[80,160]}]]; // [4]: Underworld (cave mouths instead of boats)
-const MAP_ATLAS=['WorldMap','WorldMapEgypt','WorldMapNorth','WorldMapEast','WorldMapUnder'];
-const REALM_INFO={0:['The Homeland','A land of conflicting castles'],1:['Egypt','The land of desert and fertility'],2:['The North','A frozen land of jarls and giants'],3:['The East','Bamboo, fog and the shogun lords'],4:['The Underworld','Tunnels, lava and the dwarven thanes']};
+  [{x:80,y:160,target:3,cam:[935,600],start:true},{x:925,y:540,target:5,cam:[76,150]}], // [4]: Underworld (cave mouths instead of boats)
+  [{x:76,y:150,target:4,cam:[925,540],start:true}]]; // [5]: Sky Realm (a balloon back down; the last realm)
+const MAP_ATLAS=['WorldMap','WorldMapEgypt','WorldMapNorth','WorldMapEast','WorldMapUnder','WorldMapSky'];
+const REALM_INFO={0:['The Homeland','A land of conflicting castles'],1:['Egypt','The land of desert and fertility'],2:['The North','A frozen land of jarls and giants'],3:['The East','Bamboo, fog and the shogun lords'],4:['The Underworld','Tunnels, lava and the dwarven thanes'],5:['The Sky Realm','Floating isles, the last of the archons']};
 // ======================= World map =======================
 class WorldMapScene extends Scene{
   constructor(state){super();this.state=state;this.active=false;this.loading=this.add(new Img('travelloader.png'),50);this.after(.5,()=>this.load());}
@@ -43,9 +44,10 @@ class WorldMapScene extends Scene{
     if(this.map===2&&!st.hasSetNorthSkin){st.setNorthSkin();this.after(1,()=>this.tut('skin'));}
     if(this.map===3&&!st.hasSetEastSkin){st.setEastSkin();this.after(1,()=>this.tut('skin'));}
     if(this.map===4&&!st.hasSetUnderSkin){st.setUnderSkin();this.after(1,()=>this.tut('skin'));}
+    if(this.map===5&&!st.hasSetSkySkin){st.setSkySkin();this.after(1,()=>this.tut('skin'));}
     if(st.hasSetEgyptSkin)ctl.add(new Button('mapcastles_alpha.png',[320,192,48,48],[320,240,48,48],444,224,guard(()=>{st.save();Director.replace(new SkinSelectScene(st));})));
     this.add(ctl,2);
-    if(lcb===0)this.after(2,()=>this.tut('welcome'));else if(lcb===1)this.after(1.6,()=>this.tut('shop'));else if(lcb===19||lcb===38||lcb===54||lcb===70)this.after(.8,()=>this.tut('newmap'));
+    if(lcb===0)this.after(2,()=>this.tut('welcome'));else if(lcb===1)this.after(1.6,()=>this.tut('shop'));else if(lcb===19||lcb===38||lcb===54||lcb===70||lcb===86)this.after(.8,()=>this.tut('newmap'));
     st.lastCastleBeat=1000;this.active=true;this.loaded=true;
   }
   tut(kind){
@@ -96,7 +98,7 @@ class CastleInfoLayer extends Node{
     this.add(helpBanner(155));this.add(new Label('white',owned?'You own this castle':c.name,240,125));
     this.add(new Sprite(CON,[96,16,16,16],174,145));this.add(new Label('tiny',['Sparse','Average','Fertile'][c.treeGrowth]??' ',180,145,'left'));
     this.add(new Sprite(CON,[112,16,16,16],270,145));this.add(new Label('tiny',['Novice','Experienced','Veteran','Warlord'][c.difficulty]??'',290,145,'left'));
-    c.elements.forEach((e,i)=>{if(e===7||e===8)this.add(new Sprite('spr_under_fx_alpha.png',e===7?[80,0,16,16]:[56,4,16,16],154-20*i,145),5);else if(e===5||e===6)this.add(new Sprite('spr_east_fx_alpha.png',[e===5?80:96,0,16,16],154-20*i,145),5);else if(e===3||e===4)this.add(new Sprite('spr_north_fx_alpha.png',[e===3?96:112,0,16,16],154-20*i,145),5);else if(e===1)this.add(new Sprite(CON,[192,176,16,16],154-20*i,145),5);else if(e===2){const s=new Sprite(CON,[176,176,16,16],154-20*i,145);s.tick=dt=>{s.tt=(s.tt||0)+dt;s.rect=Math.floor(s.tt/.5)%2?[160,176,16,16]:[176,176,16,16];};this.add(s,5);}});
+    c.elements.forEach((e,i)=>{if(e===9||e===10)this.add(new Sprite('spr_sky_fx_alpha.png',[e===9?88:104,0,16,16],154-20*i,145),5);else if(e===7||e===8)this.add(new Sprite('spr_under_fx_alpha.png',e===7?[80,0,16,16]:[56,4,16,16],154-20*i,145),5);else if(e===5||e===6)this.add(new Sprite('spr_east_fx_alpha.png',[e===5?80:96,0,16,16],154-20*i,145),5);else if(e===3||e===4)this.add(new Sprite('spr_north_fx_alpha.png',[e===3?96:112,0,16,16],154-20*i,145),5);else if(e===1)this.add(new Sprite(CON,[192,176,16,16],154-20*i,145),5);else if(e===2){const s=new Sprite(CON,[176,176,16,16],154-20*i,145);s.tick=dt=>{s.tt=(s.tt||0)+dt;s.rect=Math.floor(s.tt/.5)%2?[160,176,16,16]:[176,176,16,16];};this.add(s,5);}});
     const img=D.SKINS[D.castleSkin(c)].right.buttons,n=c.units.length,x0=fl(240-18*(n-1));
     c.units.forEach((id,i)=>this.add(M().unitIcon(id,img,x0+36*i,175,.75)));
     this.add(new Menu([owned?new Button(BTN,[384,192,96,48],[384,240,96,48],320,220,()=>go()):btn('attack',320,220,()=>go()),btn('back',160,220,()=>{sfx('select.wav');owner.reactivate();this.remove();})]));
@@ -209,7 +211,7 @@ class CampaignResultScene extends Scene{
     super();const st=P.state,c=D.castleById(P.castleId);this.P=P;this.state=st;this.active=true;
     this.add(new Img(c.background));
     st.numBattles++;let newUnits=false,newSkin=false,tp=0;
-    if(victory){st.numVictories++;const already=st.ownsCastle(c.id);st.currentMap=c.id>=71?4:c.id>=55?3:c.id>=39?2:c.id>=20?1:0;
+    if(victory){st.numVictories++;const already=st.ownsCastle(c.id);st.currentMap=c.id>=87?5:c.id>=71?4:c.id>=55?3:c.id>=39?2:c.id>=20?1:0;
       this.goToGameOver=!already&&st.ownAllCastlesAfterWinning(c.id);
       tp=c.techReward+achievements.reduce((a,x)=>a+x.tp,0);if(already)tp=Math.trunc(tp/2);st.techPoints+=tp;
       if(!already){st.winCastle(c.id);st.lastCastleBeat=c.id;for(const u of c.upgrades)if(!st.hasUpgradeAvailable(u)){st.upgradesAvailable.push(u);newUnits=true;if(D.upgradeInfo(u).techCost===0&&!st.hasUpgrade(u))st.upgrades.push(u);}
@@ -233,13 +235,14 @@ class CampaignResultScene extends Scene{
     if(this.goToGameOver)Director.replace(new CampaignVictoryScene(st));else if(st.lastCastleBeat===1)Director.replace(new ShopScene(st,true));else Director.replace(new WorldMapScene(st));}
 }
 class CampaignVictoryScene extends Scene{
-  constructor(st){super();Audio.playMusic('ccwin.mp3',false);const pre=['','egypt_','north_','east_','under_'][st.currentMap]??'';require("extras").Stats.flag('realm'+st.currentMap);
+  constructor(st){super();Audio.playMusic('ccwin.mp3',false);const pre=['','egypt_','north_','east_','under_','sky_'][st.currentMap]??'';require("extras").Stats.flag('realm'+st.currentMap);
     this.add(new Img(pre+'victory.png'));const night=this.add(new Img(pre+'victory_night.png'));night.opacity=0;night.run(new Seq(new Delay(3.25),FadeIn(1)));
     const l1=this.add(new Label('white','You have conquered the realm!',240,20));l1.opacity=0;l1.run(new Seq(new Delay(5),FadeIn(1)));
     if(!st.conqueredAllRealms()){const l2=this.add(new Label('white',"But there's more realms left!",240,40));l2.opacity=0;l2.run(new Seq(new Delay(5),FadeIn(1)));}
     this.after(8,()=>{sfx('explosionbig.wav');this.add(new Label('white',`Victories: ${st.numVictories} / Battles: ${st.numBattles}`,20,80,'left'));});
     this.after(9,()=>{sfx('explosionbig.wav');this.add(new Label('white','Rank: '+D.RANKS(st.numBattles?st.numVictories/st.numBattles:0),20,110,'left'));});
-    this.after(10,()=>{sfx('explosionbig.wav');this.add(new Menu([btn('map',310,285,()=>{sfx('select.wav');Audio.stopMusic();Director.replace(new WorldMapScene(st));})]));});
+    const all=st.conqueredAllRealms();
+    this.after(10,()=>{sfx('explosionbig.wav');this.add(new Menu([btn(all?'continue_':'map',310,285,()=>{sfx('select.wav');Audio.stopMusic();Director.replace(all?new (require("extras").FinalEndingScene)(st):new WorldMapScene(st));})]));});
   }
   exit(){Audio.stopMusic();}
 }
