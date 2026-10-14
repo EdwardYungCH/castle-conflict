@@ -130,10 +130,28 @@
 | `docs/specs/` | 逆向分析筆記，記錄座標、流程和數值 |
 | `src/expansion.js` | 擴充內容（v2.0–v2.5）（城堡、兵種、升級、圖集）；原版資料 `content-v1.85.js` 保持不變 |
 | `tools/` | v2.0 美術產生腳本（需要 Python、Pillow、NumPy） |
+| `capacitor.config.json`、`scripts/`、`ios-assets/`、`.github/workflows/ios.yml` | iOS 版：Capacitor 設定、建置腳本、圖示、自動編譯流程 |
 | `build.py` | 打包腳本：`python build.py 2.5` 會重新產生 `index.html` |
 
 ## 版權
 遊戲美術、音樂與設計屬原作者 Broken Kings（Stephen Gazzard、Josiah Tobin）所有。本專案只作個人保存與學習用途。
+
+## iOS 版（Capacitor 原生包裝）
+`index.html` 用 Capacitor 包成原生 iOS App，由 GitHub Actions 的 macOS 機器自動編譯（`.github/workflows/ios.yml`），不需要自己有 Mac。每次推上 main 都會重新編譯，產出未簽名的 `CastleConflict-unsigned.ipa`，放在 Release **ios-latest**：
+
+https://github.com/EdwardYungCH/castle-conflict/releases/tag/ios-latest
+
+因為沒有付費開發者帳號，要用自己的 Apple ID 簽名後側載。Windows 上用 **Sideloadly** 最簡單：
+
+1. 在 iPhone 開啟開發者模式：設定 → 隱私權與安全性 → 開發者模式（開了會重開機）。
+2. Windows 安裝 iTunes（要從 apple.com 下載的版本，不要 Microsoft Store 版），再安裝 Sideloadly（https://sideloadly.io）。
+3. iPhone 用 USB 線接電腦，手機上按「信任」。
+4. 開 Sideloadly，把 `CastleConflict-unsigned.ipa` 拖進去，填 Apple ID，按 Start，輸入密碼（有雙重認證會問驗證碼）。
+5. 裝好後在 iPhone：設定 → 一般 → VPN 與裝置管理 → 信任你的 Apple ID。
+
+免費 Apple ID 簽的 App **7 天到期**（最多同時 3 個），到期後用 Sideloadly 再裝一次就好，存檔不會消失。AltStore 也可以，做法相同。
+
+iOS 版的存檔和 PWA（加到主畫面的網頁版）是分開的。橫向全螢幕，沒有狀態列。本機重建：`npm install && npm run build && npm run ios:add`，之後在 Xcode 開 `ios/App/App.xcworkspace`。
 
 ## 加到 iPhone 主畫面（PWA）
 1. 在 Safari 開啟遊戲網址。
