@@ -51,7 +51,7 @@ class MenuScene extends Scene{
     const realm=st?require("campaign").REALM_INFO[st.currentMap]?.[0]??'':'';
     const q=D.GameScore.load(),stats=X.Stats.load(),ach=X.ACHIEVEMENTS.filter(a=>a[2](stats)).length;
     this.card=L.add(new DrawNode(ctx=>{UI.panel(ctx,40,104,400,62);
-      if(started){text(ctx,'white',`Campaign ${st.campaignId}`,56,124,{align:'left'});text(ctx,'tiny',`${realm}  -  ${st.numCastlesOwned()}/${st.totalCastles()} castles  -  ${st.techPoints} TP`,56,146,{align:'left'});}
+      if(started){text(ctx,'white',`Campaign ${st.campaignId}`,56,124,{align:'left'});text(ctx,'tiny',`${realm} - ${st.numCastlesOwned()}/${st.totalCastles()}`,56,146,{align:'left'});}
       else{text(ctx,'white','Campaign',56,124,{align:'left'});text(ctx,'tiny','Conquer the six realms',56,146,{align:'left'});}}),3);
     const go=f=>()=>{if(!active())return;sfx('select.wav');f();};
     const files=()=>{this.hideMenu();L.add(new SelectCampaignLayer(this),5);};

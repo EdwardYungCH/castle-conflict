@@ -19,6 +19,9 @@ canvas.addEventListener('pointermove',e=>{const [x,y]=toLogical(e);Touch.moved(e
 canvas.addEventListener('pointerup',e=>{const [x,y]=toLogical(e);Touch.ended(e.pointerId,x,y);});
 canvas.addEventListener('pointercancel',e=>{Touch.claims.delete(e.pointerId);});
 for(const ev of ['contextmenu','selectstart','dblclick'])canvas.addEventListener(ev,e=>e.preventDefault());
+// iOS Safari ignores user-scalable=no: block page pinch-zoom and double-tap zoom so the game's own pinch (world map) works
+for(const ev of ['touchstart','touchmove','touchend'])canvas.addEventListener(ev,e=>e.preventDefault(),{passive:false});
+document.addEventListener('gesturestart',e=>e.preventDefault());document.addEventListener('gesturechange',e=>e.preventDefault());
 canvas.addEventListener('wheel',e=>{e.preventDefault();const [x,y]=toLogical(e);Director.scene?.wheel?.(e.deltaY,x,y);},{passive:false});
 // Keyboard: 1-9 = player 1 unit buttons, Q..O = player 2 (local multiplayer), Space = pause, Esc = quit dialog
 const P2KEYS='qwertyuio';

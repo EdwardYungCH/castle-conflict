@@ -13,7 +13,7 @@
 <style>
 :root{color-scheme:dark;--bg:#0d0f12;--ink:#d9dccf;--soft:#8b928c;--line:#262b30}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:13px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;overscroll-behavior:none}
+html,body{margin:0;height:100%;overflow:hidden;touch-action:none;background:var(--bg);color:var(--ink);font:13px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;overscroll-behavior:none}
 body{display:flex;flex-direction:column;height:100dvh;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 header{display:flex;align-items:center;justify-content:space-between;padding:6px 16px;gap:12px;flex:none}
 header b{font:600 13px/1 Georgia,serif;letter-spacing:2px;color:#e8d9a0}
@@ -2042,7 +2042,7 @@ class MenuScene extends Scene{
     const realm=st?require("campaign").REALM_INFO[st.currentMap]?.[0]??'':'';
     const q=D.GameScore.load(),stats=X.Stats.load(),ach=X.ACHIEVEMENTS.filter(a=>a[2](stats)).length;
     this.card=L.add(new DrawNode(ctx=>{UI.panel(ctx,40,104,400,62);
-      if(started){text(ctx,'white',`Campaign ${st.campaignId}`,56,124,{align:'left'});text(ctx,'tiny',`${realm}  -  ${st.numCastlesOwned()}/${st.totalCastles()} castles  -  ${st.techPoints} TP`,56,146,{align:'left'});}
+      if(started){text(ctx,'white',`Campaign ${st.campaignId}`,56,124,{align:'left'});text(ctx,'tiny',`${realm} - ${st.numCastlesOwned()}/${st.totalCastles()}`,56,146,{align:'left'});}
       else{text(ctx,'white','Campaign',56,124,{align:'left'});text(ctx,'tiny','Conquer the six realms',56,146,{align:'left'});}}),3);
     const go=f=>()=>{if(!active())return;sfx('select.wav');f();};
     const files=()=>{this.hideMenu();L.add(new SelectCampaignLayer(this),5);};
@@ -2561,6 +2561,9 @@ canvas.addEventListener('pointermove',e=>{const [x,y]=toLogical(e);Touch.moved(e
 canvas.addEventListener('pointerup',e=>{const [x,y]=toLogical(e);Touch.ended(e.pointerId,x,y);});
 canvas.addEventListener('pointercancel',e=>{Touch.claims.delete(e.pointerId);});
 for(const ev of ['contextmenu','selectstart','dblclick'])canvas.addEventListener(ev,e=>e.preventDefault());
+// iOS Safari ignores user-scalable=no: block page pinch-zoom and double-tap zoom so the game's own pinch (world map) works
+for(const ev of ['touchstart','touchmove','touchend'])canvas.addEventListener(ev,e=>e.preventDefault(),{passive:false});
+document.addEventListener('gesturestart',e=>e.preventDefault());document.addEventListener('gesturechange',e=>e.preventDefault());
 canvas.addEventListener('wheel',e=>{e.preventDefault();const [x,y]=toLogical(e);Director.scene?.wheel?.(e.deltaY,x,y);},{passive:false});
 // Keyboard: 1-9 = player 1 unit buttons, Q..O = player 2 (local multiplayer), Space = pause, Esc = quit dialog
 const P2KEYS='qwertyuio';
