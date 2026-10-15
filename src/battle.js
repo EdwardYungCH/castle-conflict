@@ -83,20 +83,21 @@ class BattleScene extends Scene{
     };
     const top=k=>[48*(k+1),28];top.labelY=y=>62;
     // New interface on wide screens: the side strips hold the buttons (two columns left, controls right); narrower: one column each side.
-    const ext=C.VIEW.ext;this.hudMode=!this.modern?'top':ext>=100?'wide':ext>=50?'mid':'top';
+    // New interface on wide screens: unit buttons along the bottom (like player 2 in multiplayer), controls in the side strips.
+    // Tunnel maps keep the top row so the tunnel lane stays visible.
+    const ext=C.VIEW.ext;this.hudMode=!this.modern||P.elements.includes(8)?'top':ext>=50?'wide':'top';
     let place=top;
-    if(this.hudMode==='wide'){place=k=>k<8?[-ext+28+52*(k%2),38+66*Math.floor(k/2)]:[480+ext-28,148];place.labelY=y=>y+35;}
-    else if(this.hudMode==='mid'){place=k=>k<4?[-ext+28,38+66*k]:k<8?[480+ext-28,38+66*(k-4)]:[240,28];place.labelY=y=>y+35;}
+    if(this.hudMode==='wide'){place=k=>[48*(k+1),294];place.labelY=y=>262;}
     mk(0,b.rosters[0],this.skinL.buttons,place,P.doubleIncome);
     if(P.mode===2){const bot=k=>[480-48*(k+1),294];bot.labelY=y=>262;mk(1,b.rosters[1],this.skinR.buttons,bot,false);}
   }
   buildHud(){
     const P=this.params;const m=new Menu();m.visible=false;this.hud=m;
     const twoP=P.mode===2;
-    const wide=this.hudMode==='wide',ext=C.VIEW.ext,rx=480+ext-28;
-    this.quitBtn=new Button(CON,[192,32,48,48],[192,80,48,48],wide?rx:twoP?452:428,wide?276:twoP?28:295,()=>this.askQuit());m.add(this.quitBtn);
+    const wide=this.hudMode==='wide',ext=C.VIEW.ext,rx=480+ext-28,lx=-ext+28;
+    this.quitBtn=new Button(CON,[192,32,48,48],[192,80,48,48],wide?rx:twoP?452:428,wide?152:twoP?28:295,()=>this.askQuit());m.add(this.quitBtn);
     if(!twoP){this.pauseBtn=new Button(CON,[0,32,48,48],[0,80,48,48],wide?rx:85,wide?40:295,()=>this.togglePause());m.add(this.pauseBtn);
-      m.add(new Button(CON,[144,32,48,48],[144,80,48,48],wide?rx:35,wide?220:295,()=>this.help()));
+      m.add(new Button(CON,[144,32,48,48],[144,80,48,48],wide?lx:35,wide?40:295,()=>this.help()));
       if(this.modern){this.speedBtn=new Button(C.BTN,[864,48,48,48],[912,48,48,48],wide?rx:135,wide?96:295,()=>this.toggleSpeed());m.add(this.speedBtn);}}
     if(P.mode===0&&P.trophy)m.add(new Button(CON,[48,208,24,24],null,240,89,()=>this.createGod()));
     this.add(m);
@@ -264,10 +265,14 @@ class BattleScene extends Scene{
     for(const c of this.clouds)for(const x of c.xs)sprite(ctx,c.img,[0,0,480,c.img.endsWith('1.png')?80:64],Math.trunc(x),c.y);
     // castles
     for(const s of [0,1]){const ups=s===0?P.playerUpgrades:P.enemyUpgrades;drawCastle(ctx,this.castleAtlas[s],s,ups,t,{debris:this.debris[s]});}
+    // wide screens: the castles continue into the side strips (body and tower mirrored about the screen edge)
+    if(C.VIEW.ext>0)for(const s of [0,1]){const ups=s===0?P.playerUpgrades:P.enemyUpgrades,atlas=this.castleAtlas[s];ctx.save();if(s===0)ctx.scale(-1,1);else{ctx.translate(960,0);ctx.scale(-1,1);}
+      if(this.debris[s])drawEntry(ctx,atlas,'CastleDebris',s===0?48:432,255);else{drawEntry(ctx,atlas,'Castle',s===0?48:432,191);if(ups.includes(0))drawEntry(ctx,atlas,'Tower',...UPG_POS[0][s]);}ctx.restore();}
     // unit buttons (ButtonLayer, z0 above castles)
     for(const m of this.unitMenus)for(const it of m.children){
       const side=it.side,gold=b.sides[side].wood;if(!this.gameOver)it.opacity=it.price<=gold?255:100;
       const half=P.mode===2&&side===1;
+      if(this.hudMode==='wide'){ctx.save();ctx.globalAlpha=it.opacity/255*.9;ctx.fillStyle='#e8edf5';ctx.beginPath();ctx.roundRect(it.x-21,it.y-21,42,42,7);ctx.fill();ctx.restore();}   // bottom row: solid backing so the buttons read over the ground
       it.drawSelf(ctx);text(ctx,this.modern&&it.price>gold?'red':'blue',it.price,it.x,it.labelY);if(half){}
     }
     // unit layers: player atlas then enemy atlas (spawn order)
