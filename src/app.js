@@ -6,13 +6,16 @@ const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 let scale=1;
 // Logical width follows the screen: 480 on 3:2, up to 720 (2.25:1) on wide phones; the world stays 480 wide, centred.
 function resize(){
-  const wrap=document.getElementById('stage');const W=wrap.clientWidth,H=wrap.clientHeight;
+  const wrap=document.getElementById('stage');let W=wrap.clientWidth,H=wrap.clientHeight;const vv=window.visualViewport;
+  // iOS ignores user-scalable=no: if the page itself got pinch-zoomed, pin the stage to the visible part of the page.
+  if(vv&&vv.scale>1.02){Object.assign(wrap.style,{position:'fixed',left:vv.offsetLeft+'px',top:vv.offsetTop+'px',width:vv.width+'px',height:vv.height+'px',zIndex:5});W=vv.width;H=vv.height;}
+  else if(wrap.style.position==='fixed'){Object.assign(wrap.style,{position:'',left:'',top:'',width:'',height:'',zIndex:''});W=wrap.clientWidth;H=wrap.clientHeight;}
   const LW=Math.max(480,Math.min(720,Math.floor(W/H*320/2)*2));C.VIEW.ext=(LW-480)/2;
   let w=W,h=W*320/LW;if(h>H){h=H;w=H*LW/320;}
   canvas.style.width=Math.floor(w)+'px';canvas.style.height=Math.floor(h)+'px';
   const dpr=window.devicePixelRatio||1;scale=Math.max(1,Math.round(h*dpr/320));canvas.width=LW*scale;canvas.height=320*scale;
 }
-window.addEventListener('resize',resize);resize();
+window.addEventListener('resize',resize);if(window.visualViewport){visualViewport.addEventListener('resize',resize);visualViewport.addEventListener('scroll',resize);}resize();
 function toLogical(e){const r=canvas.getBoundingClientRect();return [(e.clientX-r.left)/r.width*C.VIEW.w-C.VIEW.ext,(e.clientY-r.top)/r.height*320];}
 canvas.addEventListener('pointerdown',e=>{e.preventDefault();Audio.unlock();try{canvas.setPointerCapture(e.pointerId);}catch{}const [x,y]=toLogical(e);Touch.began(e.pointerId,x,y);});
 canvas.addEventListener('pointermove',e=>{const [x,y]=toLogical(e);Touch.moved(e.pointerId,x,y);});

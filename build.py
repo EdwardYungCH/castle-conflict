@@ -24,5 +24,6 @@ html = html.replace('/*__SCRIPT__*/', script).replace('__VERSION__', version)
 out = os.path.join(ROOT, 'index.html')
 open(out, 'w', encoding='utf8').write(html)
 print(out, os.path.getsize(out), 'bytes,', len(assets), 'assets')
-sw = open(os.path.join(ROOT, 'sw.template.js'), encoding='utf8').read().replace('__VERSION__', version)
+import hashlib
+sw = open(os.path.join(ROOT, 'sw.template.js'), encoding='utf8').read().replace('__VERSION__', version + '-' + hashlib.sha1(html.encode('utf8')).hexdigest()[:8])
 open(os.path.join(ROOT, 'sw.js'), 'w', encoding='utf8').write(sw)

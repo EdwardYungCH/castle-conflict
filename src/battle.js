@@ -97,7 +97,7 @@ class BattleScene extends Scene{
     this.quitBtn=new Button(CON,[192,32,48,48],[192,80,48,48],wide?rx:twoP?452:428,wide?276:twoP?28:295,()=>this.askQuit());m.add(this.quitBtn);
     if(!twoP){this.pauseBtn=new Button(CON,[0,32,48,48],[0,80,48,48],wide?rx:85,wide?40:295,()=>this.togglePause());m.add(this.pauseBtn);
       m.add(new Button(CON,[144,32,48,48],[144,80,48,48],wide?rx:35,wide?220:295,()=>this.help()));
-      if(this.modern){this.speedBtn=new StoneBtn(wide?rx:135,wide?96:295,()=>this.toggleSpeed(),{label:'1x'});m.add(this.speedBtn);}}
+      if(this.modern){this.speedBtn=new Button(C.BTN,[864,48,48,48],[912,48,48,48],wide?rx:135,wide?96:295,()=>this.toggleSpeed());m.add(this.speedBtn);}}
     if(P.mode===0&&P.trophy)m.add(new Button(CON,[48,208,24,24],null,240,89,()=>this.createGod()));
     this.add(m);
   }
@@ -116,7 +116,7 @@ class BattleScene extends Scene{
   buyDouble(side){if(!this.buyingAllowed||Director.paused)return;if(this.battle.buyDoubleIncome(side)){sfx('buy.wav');const it=this.unitMenus[side].children.find(c=>c.isDouble);if(it)it.enabled=false;}}
   createGod(){this.ultimateClicks++;if(this.ultimateClicks>2){this.ultimateClicks=0;if(this.battle.running){this.battle.createUnit(0,'unicorn');this.battle.sides[0].unicorn=true;}}}
   togglePause(){if(!this.activeHud()||this.pauseLocked)return;sfx('select.wav');this.setPaused(!Director.paused);if(this.modern){if(Director.paused)this.showPauseMenu();else this.hidePauseMenu();}}
-  toggleSpeed(){if(!this.activeHud()||Director.paused)return;sfx('select.wav');this.speed=this.speed===1?2:1;if(this.speedBtn)this.speedBtn.label=this.speed+'x';}
+  toggleSpeed(){if(!this.activeHud()||Director.paused)return;sfx('select.wav');this.speed=this.speed===1?2:1;if(this.speedBtn){this.speedBtn.normal=this.speed===2?[960,48,48,48]:[864,48,48,48];this.speedBtn.sel=this.speed===2?[864,96,48,48]:[912,48,48,48];}}
   // ---- new interface: pause menu with volume, long-press unit card ----
   showPauseMenu(){if(this.pauseLayer)return;const P=this.params,L=new Node();this.pauseLayer=L;L.add(C.fadeLayer(),0);
     const sl=[new Slider(196,248,130,Audio.volume.music,v=>UI.setVolume('music',v)),new Slider(196,276,130,Audio.volume.sfx,v=>UI.setVolume('sfx',v))];L.sliders=sl;
