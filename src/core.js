@@ -95,8 +95,8 @@ const Director={scene:null,stack:[],paused:false,ctx:null,
   push(s){this.stack.push(this.scene);this.scene=s;Touch.reset();s.enter?.();},
   pop(){const s=this.scene;s.exit?.();this.scene=this.stack.pop();Touch.reset();this.scene?.resume?.();},
   update(dt){Touch.update();if(this.scene&&!(this.paused&&this.scene.pausable))this.scene.update(dt);else this.scene?.updateWhilePaused?.(dt);},
-  draw(ctx){const ext=VIEW.ext;ctx.save();ctx.imageSmoothingEnabled=false;ctx.fillStyle='#000';ctx.fillRect(-ext,0,480+2*ext,320);
-    if(this.scene){ctx.save();if(this.scene.shake)ctx.translate(this.scene.shake[0],this.scene.shake[1]);if(ext>0)this.drawWings(ctx,ext);this.scene.draw(ctx);ctx.restore();}ctx.restore();}
+  draw(ctx){const ext=VIEW.ext;ctx.save();ctx.imageSmoothingEnabled=false;ctx.fillStyle='#000';ctx.fillRect(-ext,0,480+2*ext,VIEW.h);
+    if(this.scene){ctx.save();if(this.scene.shake)ctx.translate(this.scene.shake[0],this.scene.shake[1]);if(ext>0)this.drawWings(ctx,ext);this.scene.draw(ctx);ctx.restore();if(VIEW.bottom>0)this.scene.drawBottom?.(ctx);}ctx.restore();}
   ,
   // Wide screens (e.g. iPhone 16 Pro Max): the 480x320 world stays as it is; the side strips continue the scene's background.
   drawWings(ctx,ext){const sc=this.scene;if(sc.wideBackground===false)return;const f=sc.params?.background??sc.children.find(c=>c instanceof Img)?.img;const im=IMG[f];if(!im)return;
@@ -104,7 +104,8 @@ const Director={scene:null,stack:[],paused:false,ctx:null,
     if(ext>w){ctx.drawImage(im,0,0,1,im.height,-ext,0,ext-w,im.height);ctx.drawImage(im,im.width-1,0,1,im.height,480+w,0,ext-w,im.height);}}
 };
 // Visible logical area: x from -ext to 480+ext (ext=0 on 3:2 screens).
-const VIEW={ext:0,get w(){return 480+2*this.ext;}};
+// bottom: extra logical rows under the 320-high world (the new interface's unit bar on phones); apply() re-fits the canvas.
+const VIEW={ext:0,bottom:0,get w(){return 480+2*this.ext;},get h(){return 320+this.bottom;},apply:null,setBottom(b){if(this.bottom===b)return;this.bottom=b;this.apply?.();}};
 class Scene extends Node{constructor(){super();}}
 // ---------- touch ----------
 function allMenus(root){const out=[];const walk=n=>{if(!n.visible&&n.blockWhenHidden===false)return;if(n instanceof Menu)out.push(n);for(const c of n.children)walk(c);};walk(root);return out.sort((a,b)=>b.seq-a.seq);}

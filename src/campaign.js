@@ -47,7 +47,7 @@ class WorldMapScene extends Scene{
     if(this.map===4&&!st.hasSetUnderSkin){st.setUnderSkin();this.after(1,()=>this.tut('skin'));}
     if(this.map===5&&!st.hasSetSkySkin){st.setSkySkin();this.after(1,()=>this.tut('skin'));}
     if(st.hasSetEgyptSkin)ctl.add(new Button('mapcastles_alpha.png',[320,192,48,48],[320,240,48,48],444,224,guard(()=>{st.save();Director.replace(new SkinSelectScene(st));})));
-    if(this.modern){ctl.add(new StoneBtn(52,200,guard(()=>this.zoomBy(1.25,240,160)),{label:'+'}));ctl.add(new StoneBtn(52,248,guard(()=>this.zoomBy(1/1.25,240,160)),{label:'-'}));}
+    if(this.modern){const zx=C.VIEW.ext>0?-C.VIEW.ext+28:52;ctl.add(new StoneBtn(zx,200,guard(()=>this.zoomBy(1.25,240,160)),{label:'+'}));ctl.add(new StoneBtn(zx,248,guard(()=>this.zoomBy(1/1.25,240,160)),{label:'-'}));}
     this.add(ctl,2);
     if(lcb===0)this.after(2,()=>this.tut('welcome'));else if(lcb===1)this.after(1.6,()=>this.tut('shop'));else if(lcb===19||lcb===38||lcb===54||lcb===70||lcb===86)this.after(.8,()=>this.tut('newmap'));
     st.lastCastleBeat=1000;this.active=true;this.loaded=true;
@@ -86,6 +86,7 @@ class WorldMapScene extends Scene{
       for(const c of this.castles){const [cx,cy]=c.position;if(mx>=cx-40&&mx<=cx+40&&my>=cy-40&&my<=cy+40&&(st.ownsCastle(c.id)||st.pathExistsToCastle(c.id))){sfx('select.wav');this.active=false;this.add(new CastleInfoLayer(st,c,this),10);return;}}
       for(const b of BOATS[this.map]){if(Math.abs(mx-b.x)<=32&&Math.abs(my-b.y)<=32){sfx('select.wav');
         if(b.target===1000){this.active=false;yesNo(this,'Nothing here yet...','Would you be interested in playing more campaigns?',()=>this.reactivate(),()=>this.reactivate());}
+        else if(!b.start&&!this.castles.every(c=>st.ownsCastle(c.id))){this.active=false;message(this,'The ship will not sail yet','Conquer every castle in this realm first!',()=>this.reactivate());}
         else if(st.pathExistsToLink(b.target)){this.active=false;const [name,blurb]=REALM_INFO[b.target];yesNo(this,`Travel to ${name}?`,blurb,()=>{st.currentMap=b.target;st.lastMapPos={x:240-b.cam[0],y:160-b.cam[1]};st.lastMapScale=1;st.save();Director.replace(new WorldMapScene(st));},()=>this.reactivate());}
         else message(this,'Fight your way to this ship!','Travel to new lands!',()=>this.reactivate());
         break;}}

@@ -14,16 +14,16 @@ function resize(){
     Object.assign(wrap.style,{position:'fixed',left:(vv?vv.offsetLeft:0)+'px',top:(vv?vv.offsetTop:0)+'px',width:W+'px',height:H+'px',zIndex:5,padding:'0'});}
   else{Object.assign(wrap.style,{position:'',left:'',top:'',width:'',height:'',zIndex:'',padding:''});W=wrap.clientWidth;H=wrap.clientHeight;}
   if(!(W>0&&H>0)){W=window.innerWidth||480;H=window.innerHeight||320;}
-  const LW=Math.max(480,Math.min(720,Math.floor(W/H*320/2)*2));C.VIEW.ext=(LW-480)/2;
-  let w=W,h=W*320/LW;if(h>H){h=H;w=H*LW/320;}
+  const LH=C.VIEW.h,LW=Math.max(480,Math.min(960,Math.floor(W/H*LH/2)*2));C.VIEW.ext=(LW-480)/2;
+  let w=W,h=W*LH/LW;if(h>H){h=H;w=H*LW/LH;}
   canvas.style.width=Math.floor(w)+'px';canvas.style.height=Math.floor(h)+'px';
-  const dpr=window.devicePixelRatio||1;scale=Math.max(1,Math.round(h*dpr/320));canvas.width=LW*scale;canvas.height=320*scale;
+  const dpr=window.devicePixelRatio||1;scale=Math.max(1,Math.round(h*dpr/LH));canvas.width=LW*scale;canvas.height=LH*scale;
   C.DEBUG=`${Math.round(W)}x${Math.round(H)} vv:${vv?`${Math.round(vv.width)}x${Math.round(vv.height)}@${vv.scale.toFixed(2)}+${Math.round(vv.offsetLeft)},${Math.round(vv.offsetTop)}`:'-'} in:${window.innerWidth}x${window.innerHeight} dpr:${dpr} cv:${Math.floor(w)}x${Math.floor(h)} lw:${LW}`;
 }
-window.addEventListener('resize',resize);window.addEventListener('orientationchange',()=>setTimeout(resize,300));
+C.VIEW.apply=resize;window.addEventListener('resize',resize);window.addEventListener('orientationchange',()=>setTimeout(resize,300));
 if(window.visualViewport){visualViewport.addEventListener('resize',resize);visualViewport.addEventListener('scroll',resize);}
 resize();setTimeout(resize,500);setTimeout(resize,2000);
-function toLogical(e){const r=canvas.getBoundingClientRect();return [(e.clientX-r.left)/r.width*C.VIEW.w-C.VIEW.ext,(e.clientY-r.top)/r.height*320];}
+function toLogical(e){const r=canvas.getBoundingClientRect();return [(e.clientX-r.left)/r.width*C.VIEW.w-C.VIEW.ext,(e.clientY-r.top)/r.height*C.VIEW.h];}
 canvas.addEventListener('pointerdown',e=>{e.preventDefault();Audio.unlock();try{canvas.setPointerCapture(e.pointerId);}catch{}const [x,y]=toLogical(e);Touch.began(e.pointerId,x,y);});
 canvas.addEventListener('pointermove',e=>{const [x,y]=toLogical(e);Touch.moved(e.pointerId,x,y);});
 canvas.addEventListener('pointerup',e=>{const [x,y]=toLogical(e);Touch.ended(e.pointerId,x,y);});

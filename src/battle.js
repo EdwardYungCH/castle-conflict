@@ -58,7 +58,9 @@ class BattleScene extends Scene{
     this.unitAtlas=[this.skinL.units,this.skinR.units];this.castleAtlas=[this.skinL.castle,this.skinR.castle];
     this.lastHealth=[-1,-1];this.hpAcc=0;this.floats=[];this.heard=0;this.gameOver=false;this.buyingAllowed=false;this.hudVisible=true;this.ultimateClicks=0;
     this.explosions=[];this.debris=[false,false];this.shakeT=0;this.shakeM=0;this.waveBanner=null;this.airOnly=true;
-    this.modern=UI.modern&&P.mode!==2;this.speed=1;this.sparks=[];this.vs=null;this.pauseLayer=null;this.cardLayer=null;this.achieve=P.mode===1?{nonWood:false,nonAir:false,nonWitch:false,nonWorm:false,wood:false,air:false,witch:true,worm:true}:null;
+    this.modern=UI.modern&&P.mode!==2;this.speed=1;this.sparks=[];this.vs=null;this.pauseLayer=null;this.cardLayer=null;
+    // New interface on phones: the world moves up and the unit buttons get their own bar under it (nothing covers the field).
+    this.bar=this.modern&&C.VIEW.ext>=50;C.VIEW.setBottom(this.bar?72:0);this.achieve=P.mode===1?{nonWood:false,nonAir:false,nonWitch:false,nonWorm:false,wood:false,air:false,witch:true,worm:true}:null;
     // scenery
     const S=D.SCENERY[P.scenery]||{};this.scn=S;this.clouds=(S.clouds||[]).map(f=>{const big=f.endsWith('1.png');return {img:f,y:big?40:112,speed:big?15:8,xs:[240,-240]};});
     this.birds=S.birds?{dark:S.birds==='dark',x:0,y:320,flying:null,next:R(20)+8}:null;
@@ -72,7 +74,7 @@ class BattleScene extends Scene{
     this.after(delay,()=>{if(this.modern&&!restore&&P.elements.length)introCards(this,P.elements,()=>this.startGame());else this.startGame();});
     if(S.surf)Audio.playMusic('surf.wav',true);else Audio.stopMusic();
   }
-  exit(){Audio.stopMusic();}
+  exit(){Audio.stopMusic();C.VIEW.setBottom(0);}
   buildButtons(){
     const P=this.params,b=this.battle;this.unitMenus=[];
     const mk=(side,types,img,place,doubleBtn)=>{
@@ -85,7 +87,7 @@ class BattleScene extends Scene{
     // New interface on wide screens: the side strips hold the buttons (two columns left, controls right); narrower: one column each side.
     // New interface on wide screens ('wide'): unit buttons stay in the top row, the controls move into the side strips.
     const ext=C.VIEW.ext;this.hudMode=!this.modern?'top':ext>=50?'wide':'top';
-    const place=top;
+    let place=top;if(this.bar){place=k=>[48*(k+1),344];place.labelY=y=>381;}
     mk(0,b.rosters[0],this.skinL.buttons,place,P.doubleIncome);
     if(P.mode===2){const bot=k=>[480-48*(k+1),294];bot.labelY=y=>262;mk(1,b.rosters[1],this.skinR.buttons,bot,false);}
   }
@@ -217,6 +219,15 @@ class BattleScene extends Scene{
     else if(P.mode===1){require("extras").Stats.battle(b.sides[0].score,victory,{flawless:victory&&b.sides[0].hp===b.sides[0].maxHp,airOnly:victory&&this.airOnly});Director.replace(new S.CampaignResultScene(P,victory,this.achievements()));}
     else Director.replace(new S.MPResultScene(P,b));
   }
+  // unit buttons (ButtonLayer, z0 above castles)
+  drawUnitButtons(ctx){const P=this.params,b=this.battle;
+    for(const m of this.unitMenus)for(const it of m.children){
+      const side=it.side,gold=b.sides[side].wood;if(!this.gameOver)it.opacity=it.price<=gold?255:100;
+      if(this.bar){ctx.save();ctx.globalAlpha=it.opacity/255*.92;ctx.fillStyle='#dfe6f0';ctx.beginPath();ctx.roundRect(it.x-21,it.y-21,42,42,7);ctx.fill();ctx.restore();}
+      it.drawSelf(ctx);text(ctx,this.modern&&it.price>gold?'red':'blue',it.price,it.x,it.labelY);}}
+  // the unit bar under the world (new interface on phones)
+  drawBottom(ctx){const e=C.VIEW.ext,W=C.VIEW.w;ctx.save();ctx.fillStyle='#17151f';ctx.fillRect(-e,320,W,C.VIEW.bottom);ctx.fillStyle='#d8a53a';ctx.fillRect(-e,320,W,2);ctx.fillStyle='#5a4a2a';ctx.fillRect(-e,322,W,1);ctx.restore();
+    if(this.hudVisible)this.drawUnitButtons(ctx);}
   update(dt){super.update(dt);for(const e of this.explosions)e.t+=dt;}
   drawSnow(ctx,b){
     const t=this.sceneTime,storm=b.blizzardOn(),fade=storm?Math.min(1,(b.time-(b.blizzard.until-6))/.8,(b.blizzard.until-b.time)/.8):0;
@@ -266,12 +277,7 @@ class BattleScene extends Scene{
     // wide screens: the castles continue into the side strips (body and tower mirrored about the screen edge)
     if(C.VIEW.ext>0)for(const s of [0,1]){const ups=s===0?P.playerUpgrades:P.enemyUpgrades,atlas=this.castleAtlas[s];ctx.save();if(s===0)ctx.scale(-1,1);else{ctx.translate(960,0);ctx.scale(-1,1);}
       if(this.debris[s])drawEntry(ctx,atlas,'CastleDebris',s===0?48:432,255);else{drawEntry(ctx,atlas,'Castle',s===0?48:432,191);if(ups.includes(0))drawEntry(ctx,atlas,'Tower',...UPG_POS[0][s]);}ctx.restore();}
-    // unit buttons (ButtonLayer, z0 above castles)
-    for(const m of this.unitMenus)for(const it of m.children){
-      const side=it.side,gold=b.sides[side].wood;if(!this.gameOver)it.opacity=it.price<=gold?255:100;
-      const half=P.mode===2&&side===1;
-      it.drawSelf(ctx);text(ctx,this.modern&&it.price>gold?'red':'blue',it.price,it.x,it.labelY);if(half){}
-    }
+    if(!this.bar)this.drawUnitButtons(ctx);
     // unit layers: player atlas then enemy atlas (spawn order)
     for(const s of [0,1]){
       const atlas=this.unitAtlas[s],items=[];
