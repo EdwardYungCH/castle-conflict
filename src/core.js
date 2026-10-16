@@ -66,7 +66,7 @@ class AtlasNode extends Node{constructor(atlas,name,x,y,o={}){super(x,y);this.at
 class Label extends Node{constructor(font,str,x,y,align='center'){super(x,y);this.font=font;this.str=String(str);this.align=align;}
   get w(){return textWidth(this.font,this.str);}
   drawSelf(ctx){text(ctx,this.font,this.str,this.x,this.y,{align:this.align,alpha:this.opacity/255,scale:this.scale});}}
-class ColorLayer extends Node{constructor(r,g,b,a){super();this.color=[r,g,b];this.opacity=a;}drawSelf(ctx){ctx.fillStyle=`rgba(${this.color.join(',')},${this.opacity/255})`;ctx.fillRect(-VIEW.ext,0,VIEW.w,320);}}
+class ColorLayer extends Node{constructor(r,g,b,a){super();this.color=[r,g,b];this.opacity=a;}drawSelf(ctx){ctx.fillStyle=`rgba(${this.color.join(',')},${this.opacity/255})`;ctx.fillRect(-VIEW.ext,VIEW.top,VIEW.w,VIEW.h);}}
 class DrawNode extends Node{constructor(fn){super();this.fn=fn;}drawSelf(ctx){this.fn(ctx,this);}}
 // ---------- menus ----------
 const BTN='sprites_buttons_alpha.png',CON='sprites_conhud_alpha.png';
@@ -95,7 +95,7 @@ const Director={scene:null,stack:[],paused:false,ctx:null,
   push(s){this.stack.push(this.scene);this.scene=s;Touch.reset();s.enter?.();},
   pop(){const s=this.scene;s.exit?.();this.scene=this.stack.pop();Touch.reset();this.scene?.resume?.();},
   update(dt){Touch.update();if(this.scene&&!(this.paused&&this.scene.pausable))this.scene.update(dt);else this.scene?.updateWhilePaused?.(dt);},
-  draw(ctx){const ext=VIEW.ext;ctx.save();ctx.imageSmoothingEnabled=false;ctx.fillStyle='#000';ctx.fillRect(-ext,0,480+2*ext,VIEW.h);
+  draw(ctx){const ext=VIEW.ext;ctx.save();ctx.imageSmoothingEnabled=false;ctx.fillStyle='#000';ctx.fillRect(-ext,VIEW.top,480+2*ext,VIEW.h);
     if(this.scene){ctx.save();if(this.scene.shake)ctx.translate(this.scene.shake[0],this.scene.shake[1]);if(ext>0)this.drawWings(ctx,ext);this.scene.draw(ctx);ctx.restore();if(VIEW.bottom>0)this.scene.drawBottom?.(ctx);}ctx.restore();}
   ,
   // Wide screens (e.g. iPhone 16 Pro Max): the 480x320 world stays as it is; the side strips continue the scene's background.
@@ -105,7 +105,8 @@ const Director={scene:null,stack:[],paused:false,ctx:null,
 };
 // Visible logical area: x from -ext to 480+ext (ext=0 on 3:2 screens).
 // bottom: extra logical rows under the 320-high world (the new interface's unit bar on phones); apply() re-fits the canvas.
-const VIEW={ext:0,bottom:0,get w(){return 480+2*this.ext;},get h(){return 320+this.bottom;},apply:null,setBottom(b){if(this.bottom===b)return;this.bottom=b;this.apply?.();}};
+// top: rows of the world cropped away at the top (the new interface on phones trims the empty sky above the health bars).
+const VIEW={ext:0,top:0,bottom:0,get w(){return 480+2*this.ext;},get h(){return 320-this.top+this.bottom;},apply:null,setLayout(t,b){if(this.top===t&&this.bottom===b)return;this.top=t;this.bottom=b;this.apply?.();},setBottom(b){this.setLayout(this.top,b);}};
 class Scene extends Node{constructor(){super();}}
 // ---------- touch ----------
 function allMenus(root){const out=[];const walk=n=>{if(!n.visible&&n.blockWhenHidden===false)return;if(n instanceof Menu)out.push(n);for(const c of n.children)walk(c);};walk(root);return out.sort((a,b)=>b.seq-a.seq);}

@@ -60,7 +60,7 @@ class BattleScene extends Scene{
     this.explosions=[];this.debris=[false,false];this.shakeT=0;this.shakeM=0;this.waveBanner=null;this.airOnly=true;
     this.modern=UI.modern&&P.mode!==2;this.speed=1;this.sparks=[];this.vs=null;this.pauseLayer=null;this.cardLayer=null;
     // New interface on phones: the world moves up and the unit buttons get their own bar under it (nothing covers the field).
-    this.bar=this.modern&&C.VIEW.ext>=50;C.VIEW.setBottom(this.bar?72:0);this.achieve=P.mode===1?{nonWood:false,nonAir:false,nonWitch:false,nonWorm:false,wood:false,air:false,witch:true,worm:true}:null;
+    this.bar=this.modern&&C.VIEW.ext>=50;C.VIEW.setLayout(this.bar?64:0,this.bar?72:0);this.achieve=P.mode===1?{nonWood:false,nonAir:false,nonWitch:false,nonWorm:false,wood:false,air:false,witch:true,worm:true}:null;
     // scenery
     const S=D.SCENERY[P.scenery]||{};this.scn=S;this.clouds=(S.clouds||[]).map(f=>{const big=f.endsWith('1.png');return {img:f,y:big?40:112,speed:big?15:8,xs:[240,-240]};});
     this.birds=S.birds?{dark:S.birds==='dark',x:0,y:320,flying:null,next:R(20)+8}:null;
@@ -74,7 +74,7 @@ class BattleScene extends Scene{
     this.after(delay,()=>{if(this.modern&&!restore&&P.elements.length)introCards(this,P.elements,()=>this.startGame());else this.startGame();});
     if(S.surf)Audio.playMusic('surf.wav',true);else Audio.stopMusic();
   }
-  exit(){Audio.stopMusic();C.VIEW.setBottom(0);}
+  exit(){Audio.stopMusic();C.VIEW.setLayout(0,0);}
   buildButtons(){
     const P=this.params,b=this.battle;this.unitMenus=[];
     const mk=(side,types,img,place,doubleBtn)=>{
@@ -94,11 +94,11 @@ class BattleScene extends Scene{
   buildHud(){
     const P=this.params;const m=new Menu();m.visible=false;this.hud=m;
     const twoP=P.mode===2;
-    const wide=this.hudMode==='wide',ext=C.VIEW.ext,rx=480+ext-28,lx=-ext+28;
-    this.quitBtn=new Button(CON,[192,32,48,48],[192,80,48,48],wide?rx:twoP?452:428,wide?152:twoP?28:295,()=>this.askQuit());m.add(this.quitBtn);
-    if(!twoP){this.pauseBtn=new Button(CON,[0,32,48,48],[0,80,48,48],wide?rx:85,wide?40:295,()=>this.togglePause());m.add(this.pauseBtn);
-      m.add(new Button(CON,[144,32,48,48],[144,80,48,48],wide?lx:35,wide?40:295,()=>this.help()));
-      if(this.modern){this.speedBtn=new Button(C.BTN,[864,48,48,48],[912,48,48,48],wide?rx:135,wide?96:295,()=>this.toggleSpeed());m.add(this.speedBtn);}}
+    const wide=this.hudMode==='wide',ext=C.VIEW.ext,rx=480+ext-28,lx=-ext+28,ty=C.VIEW.top+28;
+    this.quitBtn=new Button(CON,[192,32,48,48],[192,80,48,48],wide?rx:twoP?452:428,wide?ty+112:twoP?28:295,()=>this.askQuit());m.add(this.quitBtn);
+    if(!twoP){this.pauseBtn=new Button(CON,[0,32,48,48],[0,80,48,48],wide?rx:85,wide?ty:295,()=>this.togglePause());m.add(this.pauseBtn);
+      m.add(new Button(CON,[144,32,48,48],[144,80,48,48],wide?lx:35,wide?ty:295,()=>this.help()));
+      if(this.modern){this.speedBtn=new Button(C.BTN,[864,48,48,48],[912,48,48,48],wide?rx:135,wide?ty+56:295,()=>this.toggleSpeed());m.add(this.speedBtn);}}
     if(P.mode===0&&P.trophy)m.add(new Button(CON,[48,208,24,24],null,240,89,()=>this.createGod()));
     this.add(m);
   }
@@ -120,11 +120,11 @@ class BattleScene extends Scene{
   toggleSpeed(){if(!this.activeHud()||Director.paused)return;sfx('select.wav');this.speed=this.speed===1?2:1;if(this.speedBtn){this.speedBtn.normal=this.speed===2?[960,48,48,48]:[864,48,48,48];this.speedBtn.sel=this.speed===2?[864,96,48,48]:[912,48,48,48];}}
   // ---- new interface: pause menu with volume, long-press unit card ----
   showPauseMenu(){if(this.pauseLayer)return;const P=this.params,L=new Node();this.pauseLayer=L;L.add(C.fadeLayer(),0);
-    const sl=[new Slider(196,248,130,Audio.volume.music,v=>UI.setVolume('music',v)),new Slider(196,276,130,Audio.volume.sfx,v=>UI.setVolume('sfx',v))];L.sliders=sl;
-    L.add(new DrawNode(ctx=>{UI.panel(ctx,120,44,240,252);text(ctx,'white','Paused',240,66);text(ctx,'tiny','Music',150,248);text(ctx,'tiny','Sound',150,276);for(const x of sl)x.draw(ctx);}),1);
+    const y0=C.VIEW.top+8;const sl=[new Slider(196,y0+204,130,Audio.volume.music,v=>UI.setVolume('music',v)),new Slider(196,y0+230,130,Audio.volume.sfx,v=>UI.setVolume('sfx',v))];L.sliders=sl;
+    L.add(new DrawNode(ctx=>{UI.panel(ctx,120,y0,240,244);text(ctx,'white','Paused',240,y0+22);text(ctx,'tiny','Music',150,y0+204);text(ctx,'tiny','Sound',150,y0+230);for(const x of sl)x.draw(ctx);}),1);
     const resume=()=>{sfx('select.wav');this.setPaused(false);this.hidePauseMenu();};
     const restart=()=>{sfx('select.wav');this.setPaused(false);const X=require("extras");Director.replace(new BattleScene(P.mode===3?X.endlessParams():P));};
-    L.add(new Menu([new TabletBtn('Continue',240,104,resume),new TabletBtn('Restart',240,154,restart),new TabletBtn('Quit',240,204,()=>{this.hidePauseMenu();this.setPaused(false);this.askQuit();})]),2);
+    L.add(new Menu([new TabletBtn('Continue',240,y0+60,resume),new TabletBtn('Restart',240,y0+110,restart),new TabletBtn('Quit',240,y0+160,()=>{this.hidePauseMenu();this.setPaused(false);this.askQuit();})]),2);
     this.add(L,20);}
   hidePauseMenu(){this.pauseLayer?.remove();this.pauseLayer=null;}
   showUnitCard(type){if(!this.activeHud()||this.cardLayer)return;const u=UNITS[type],info=D.unitInfo(u.id),img=this.skinL.buttons;sfx('select.wav');
