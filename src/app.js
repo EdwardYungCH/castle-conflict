@@ -5,17 +5,24 @@ const S=require("scenes");
 const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
 let scale=1;
 // Logical width follows the screen: 480 on 3:2, up to 720 (2.25:1) on wide phones; the world stays 480 wide, centred.
+// Sizing never trusts element layout on phones: it takes the visible area straight from the visual viewport (or the window),
+// and pins the stage to it. That survives iOS page zoom (which ignores user-scalable=no) and standalone PWA quirks.
+const phoneLike=()=>matchMedia('(orientation:landscape) and (max-height:520px)').matches||(window.visualViewport&&window.visualViewport.scale>1.02);
 function resize(){
-  const wrap=document.getElementById('stage');let W=wrap.clientWidth,H=wrap.clientHeight;const vv=window.visualViewport;
-  // iOS ignores user-scalable=no: if the page itself got pinch-zoomed, pin the stage to the visible part of the page.
-  if(vv&&vv.scale>1.02){Object.assign(wrap.style,{position:'fixed',left:vv.offsetLeft+'px',top:vv.offsetTop+'px',width:vv.width+'px',height:vv.height+'px',zIndex:5});W=vv.width;H=vv.height;}
-  else if(wrap.style.position==='fixed'){Object.assign(wrap.style,{position:'',left:'',top:'',width:'',height:'',zIndex:''});W=wrap.clientWidth;H=wrap.clientHeight;}
+  const wrap=document.getElementById('stage'),vv=window.visualViewport;let W,H;
+  if(phoneLike()){W=vv?vv.width:window.innerWidth;H=vv?vv.height:window.innerHeight;
+    Object.assign(wrap.style,{position:'fixed',left:(vv?vv.offsetLeft:0)+'px',top:(vv?vv.offsetTop:0)+'px',width:W+'px',height:H+'px',zIndex:5,padding:'0'});}
+  else{Object.assign(wrap.style,{position:'',left:'',top:'',width:'',height:'',zIndex:'',padding:''});W=wrap.clientWidth;H=wrap.clientHeight;}
+  if(!(W>0&&H>0)){W=window.innerWidth||480;H=window.innerHeight||320;}
   const LW=Math.max(480,Math.min(720,Math.floor(W/H*320/2)*2));C.VIEW.ext=(LW-480)/2;
   let w=W,h=W*320/LW;if(h>H){h=H;w=H*LW/320;}
   canvas.style.width=Math.floor(w)+'px';canvas.style.height=Math.floor(h)+'px';
   const dpr=window.devicePixelRatio||1;scale=Math.max(1,Math.round(h*dpr/320));canvas.width=LW*scale;canvas.height=320*scale;
+  C.DEBUG=`${Math.round(W)}x${Math.round(H)} vv:${vv?`${Math.round(vv.width)}x${Math.round(vv.height)}@${vv.scale.toFixed(2)}+${Math.round(vv.offsetLeft)},${Math.round(vv.offsetTop)}`:'-'} in:${window.innerWidth}x${window.innerHeight} dpr:${dpr} cv:${Math.floor(w)}x${Math.floor(h)} lw:${LW}`;
 }
-window.addEventListener('resize',resize);if(window.visualViewport){visualViewport.addEventListener('resize',resize);visualViewport.addEventListener('scroll',resize);}resize();
+window.addEventListener('resize',resize);window.addEventListener('orientationchange',()=>setTimeout(resize,300));
+if(window.visualViewport){visualViewport.addEventListener('resize',resize);visualViewport.addEventListener('scroll',resize);}
+resize();setTimeout(resize,500);setTimeout(resize,2000);
 function toLogical(e){const r=canvas.getBoundingClientRect();return [(e.clientX-r.left)/r.width*C.VIEW.w-C.VIEW.ext,(e.clientY-r.top)/r.height*320];}
 canvas.addEventListener('pointerdown',e=>{e.preventDefault();Audio.unlock();try{canvas.setPointerCapture(e.pointerId);}catch{}const [x,y]=toLogical(e);Touch.began(e.pointerId,x,y);});
 canvas.addEventListener('pointermove',e=>{const [x,y]=toLogical(e);Touch.moved(e.pointerId,x,y);});

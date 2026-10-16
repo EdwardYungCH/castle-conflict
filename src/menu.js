@@ -22,7 +22,7 @@ class LoadingScene extends Scene{
     if(this.ready&&this.time>=2&&!this.faded&&(Audio.unlocked||!Audio.ctx)){this.faded=true;const g=new Img('bg_grass.png');g.opacity=0;g.run(FadeIn(1));this.add(g,0);const f=fauxLayout(true);for(const c of f.children){c.opacity=0;c.run(FadeIn(1));}this.add(f,0);this.after(1,()=>Director.replace(new MenuScene(true)));}
   }
   drawSelf(ctx){}
-  draw(ctx){super.draw(ctx);if(this.ready&&this.time>=2&&!this.faded&&!Audio.unlocked&&Math.floor(this.time*2)%2===0)text(ctx,'tiny','Touch to start',240,300);}
+  draw(ctx){super.draw(ctx);if(this.ready&&this.time>=2&&!this.faded&&!Audio.unlocked&&Math.floor(this.time*2)%2===0)text(ctx,'tiny','Touch to start',240,300);if(C.DEBUG)text(ctx,'tiny',C.DEBUG,240,314,{alpha:.7});}
   touchBegan(){Audio.unlock();}
 }
 // ---------------- Main menu ----------------
@@ -72,6 +72,7 @@ class MenuScene extends Scene{
   }
   enter(){Audio.playMusic('castleconflict.mp3',false);}
   exit(){Audio.stopMusic();}
+  draw(ctx){super.draw(ctx);if(C.DEBUG&&(this.dbgT=(this.dbgT||0)+1/60)<10)text(ctx,'tiny',C.DEBUG,240,314,{alpha:.7});}
   hideMenu(){this.main.remove();if(this.card)this.card.visible=false;}
   returnFromLayer(layer){layer.remove();this.layer.add(this.main,5);this.logo.visible=true;if(this.card)this.card.visible=true;}
 }
