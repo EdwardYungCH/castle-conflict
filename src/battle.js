@@ -83,11 +83,9 @@ class BattleScene extends Scene{
     };
     const top=k=>[48*(k+1),28];top.labelY=y=>62;
     // New interface on wide screens: the side strips hold the buttons (two columns left, controls right); narrower: one column each side.
-    // New interface on wide screens: unit buttons along the bottom (like player 2 in multiplayer), controls in the side strips.
-    // Tunnel maps keep the top row so the tunnel lane stays visible.
-    const ext=C.VIEW.ext;this.hudMode=!this.modern||P.elements.includes(8)?'top':ext>=50?'wide':'top';
-    let place=top;
-    if(this.hudMode==='wide'){place=k=>[48*(k+1),294];place.labelY=y=>262;}
+    // New interface on wide screens ('wide'): unit buttons stay in the top row, the controls move into the side strips.
+    const ext=C.VIEW.ext;this.hudMode=!this.modern?'top':ext>=50?'wide':'top';
+    const place=top;
     mk(0,b.rosters[0],this.skinL.buttons,place,P.doubleIncome);
     if(P.mode===2){const bot=k=>[480-48*(k+1),294];bot.labelY=y=>262;mk(1,b.rosters[1],this.skinR.buttons,bot,false);}
   }
@@ -272,7 +270,6 @@ class BattleScene extends Scene{
     for(const m of this.unitMenus)for(const it of m.children){
       const side=it.side,gold=b.sides[side].wood;if(!this.gameOver)it.opacity=it.price<=gold?255:100;
       const half=P.mode===2&&side===1;
-      if(this.hudMode==='wide'){ctx.save();ctx.globalAlpha=it.opacity/255*.9;ctx.fillStyle='#e8edf5';ctx.beginPath();ctx.roundRect(it.x-21,it.y-21,42,42,7);ctx.fill();ctx.restore();}   // bottom row: solid backing so the buttons read over the ground
       it.drawSelf(ctx);text(ctx,this.modern&&it.price>gold?'red':'blue',it.price,it.x,it.labelY);if(half){}
     }
     // unit layers: player atlas then enemy atlas (spawn order)
@@ -317,8 +314,8 @@ class BattleScene extends Scene{
       for(const it of this.hud.children)it.drawSelf(ctx);
       if(P.mode===3)text(ctx,'tiny',`Wave ${P.wave}`,240,100);
       if(this.modern){for(const s of [0,1])text(ctx,'tiny',`${Math.max(0,this.lastHealth[s])}/${b.sides[s].maxHp}`,s===0?58:423,87);
-        if(this.hudMode!=='top'){const name=P.mode===1?(D.castleById(P.castleId)?.name??''):P.mode===3?`Wave ${P.wave}`:P.mode===0?'Quick Play':'';if(name)text(ctx,'tiny',name,240,12);
-          const sec=Math.floor(b.time);text(ctx,'tiny',`${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`,240,26);}}
+        if(this.hudMode!=='top'){const name=P.mode===1?(D.castleById(P.castleId)?.name??''):P.mode===3?`Wave ${P.wave}`:P.mode===0?'Quick Play':'';if(name)text(ctx,'tiny',name,240,106);
+          const sec=Math.floor(b.time);text(ctx,'tiny',`${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`,240,120);}}
     }
     // new interface: combat sparks and the opening VS banner
     for(const sp of this.sparks){const k=sp.t/.3;ctx.save();ctx.globalAlpha=1-k;ctx.fillStyle='#fff6c8';for(let i=0;i<6;i++){const a=i*Math.PI/3+.4,r=3+10*k;ctx.fillRect(Math.round(sp.x+Math.cos(a)*r),Math.round(sp.y+Math.sin(a)*r*.6),2,2);}ctx.restore();}
