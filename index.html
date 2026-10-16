@@ -1909,6 +1909,14 @@ const ACHIEVEMENTS=[
  ['Immortal','Endless mode: clear 20 waves',s=>s.endlessBest>=20]];
 const unlocked=s=>ACHIEVEMENTS.filter(a=>a[2](s));
 
+// ---------- save backup / restore (all cc185-* keys as one code) ----------
+const SAVE_KEYS=()=>{try{return Object.keys(localStorage).filter(k=>k.startsWith('cc185-'));}catch{return [];}};
+function exportCode(){const o={};for(const k of SAVE_KEYS())o[k]=localStorage.getItem(k);return 'CC1:'+btoa(unescape(encodeURIComponent(JSON.stringify(o))));}
+function importCode(code){code=String(code||'').trim();if(!code.startsWith('CC1:'))throw new Error('bad');const o=JSON.parse(decodeURIComponent(escape(atob(code.slice(4)))));let n=0;for(const [k,v] of Object.entries(o))if(k.startsWith('cc185-')&&typeof v==='string'){localStorage.setItem(k,v);n++;}return n;}
+function backupDialog(scene){const code=exportCode();const done=()=>message(scene,'Backup copied','Paste it somewhere safe (Notes, a chat...)',null,20);
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(code).then(done,()=>{window.prompt('Copy this backup code:',code);});else window.prompt('Copy this backup code:',code);}
+function restoreDialog(scene){const c=window.prompt('Paste your backup code:');if(!c)return;
+  try{const n=importCode(c);message(scene,'Restored',`${n} entries loaded. Restarting...`,()=>location.reload(),20);setTimeout(()=>location.reload(),2500);}catch{message(scene,'Invalid code','That is not a Castle Conflict backup.',null,20);}}
 // ---------- Records screen ----------
 class RecordsScene extends Scene{
   constructor(){super();this.add(new Img('shopbg.png'));this.page=0;this.stats=Stats.load();this.body=null;
@@ -1917,6 +1925,7 @@ class RecordsScene extends Scene{
     this.l=am.add(new Button(CON,[48,128,48,48],[48,128,48,48],40,160,()=>{sfx('select.wav');this.show(this.page-1);}));
     this.r=am.add(new Button(CON,[0,128,48,48],[0,128,48,48],440,160,()=>{sfx('select.wav');this.show(this.page+1);}));
     am.add(btn('back',240,290,()=>{sfx('select.wav');Director.replace(new (require("menu").MenuScene)());}));
+    am.add(textBtn('Backup',120,290,()=>{sfx('select.wav');backupDialog(this);}));am.add(textBtn('Restore',360,290,()=>{sfx('select.wav');restoreDialog(this);}));
     this.show(0);
   }
   show(p){const last=Math.ceil(ACHIEVEMENTS.length/8);this.page=Math.max(0,Math.min(last,p));this.body?.remove();const B=new Node();this.body=B;this.add(B,1);const s=this.stats,q=D.GameScore.load();
@@ -1987,7 +1996,7 @@ class FinalEndingScene extends Scene{
   }
   exit(){Audio.stopMusic();}
 }
-Object.assign(exports,{textBtn,Stats,ACHIEVEMENTS,RecordsScene,endlessParams,nextWave,waveDef,EndlessResultScene,FinalEndingScene});
+Object.assign(exports,{textBtn,Stats,ACHIEVEMENTS,RecordsScene,exportCode,importCode,endlessParams,nextWave,waveDef,EndlessResultScene,FinalEndingScene});
 
 },
 "menu":function(require,exports){
