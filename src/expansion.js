@@ -170,9 +170,15 @@ CONTENT.units.push(
  {id:50,name:'Lava Golem',description:'Leaves a pool of lava when it dies',cost:75,techCost:18,internal:false,hud:[432,432]},
  {id:51,name:'Bat Swarm',description:'Three fast bats that harass airships',cost:30,techCost:11,internal:false,hud:[0,576]},
  {id:52,name:'Dwarf Engineer',description:'Seals the tunnel, or breaks an enemy seal',cost:40,techCost:15,internal:false,hud:[48,576]},
- {id:54,name:'Bat',description:'',cost:0,techCost:0,internal:true,hud:[0,576]});
+ {id:54,name:'Bat',description:'',cost:0,techCost:0,internal:true,hud:[0,576]},
+ // v3.3: lava tide, mushrooms and four more underworld units
+ {id:65,name:'Mole Rider',description:'Fast tunnel cavalry that bites the castle',cost:45,techCost:11,internal:false,hud:[144,624]},
+ {id:66,name:'Drill Cart',description:'Slow tunnel siege; drills through seals',cost:65,techCost:15,internal:false,hud:[192,624]},
+ {id:67,name:'Crossbow Dwarf',description:'Shoots bolts at airships and bats',cost:45,techCost:11,internal:false,hud:[240,624]},
+ {id:68,name:'Cave Shaman',description:'Conjures an ore vein in the tunnel',cost:40,techCost:11,internal:false,hud:[288,624]});
 CONTENT.upgrades.push({id:8,name:'Forge',description:'Allows purchase of underworld units.',techCost:11});
 CONTENT.shopPages.push({name:'Underworld Units',units:[48,49,51,52,50],upgrade:8,requires:8});
+CONTENT.shopPages.push({name:'Underworld Units II',units:[68,65,67,66],upgrade:1000,unitReq:8,requires:8});
 const UBG=n=>`bg_under_${n}.png`;
 const UNDER_CASTLES=[
  [71,'Thane Borin the Gatekeeper',250,30,6,1,1,'cavern',[2,0,48,49,1],[8],[8]],
@@ -180,17 +186,17 @@ const UNDER_CASTLES=[
  [73,'Thane Grim the Miner',260,30,6,1,1,'cavern2',[2,0,48,52,49,13],[8,2],[8]],
  [74,'Thane Hilda the Hammer',270,20,11,1,1,'lavariver',[2,16,48,49,11,14],[8,3],[8,7]],
  [75,'Thane Orik the Swift',260,15,11,1,2,'crystal',[2,21,48,51,4,15],[8,0],[8]],
- [76,'Thane Vesna the Lost',290,15,11,2,0,'deep',[2,16,24,26,49,22],[8,4,2],[8,7]],
- [77,'Thane Bram the Greedy',290,30,11,2,1,'cavern',[2,3,48,49,18,52],[8,2],[8]],
+ [76,'Thane Vesna the Lost',290,15,11,2,0,'deep',[2,16,24,26,49,22,65],[8,4,2],[8,7,12]],
+ [77,'Thane Bram the Greedy',290,30,11,2,1,'cavern',[2,3,48,49,18,52,67],[8,2],[8,12]],
  [78,'Thane Ulla the Burning',300,25,11,2,1,'lavalake',[2,16,50,13,12,33],[8,2,0],[7]],
- [79,'Thane Kell the Black',310,20,11,2,2,'shore',[2,16,48,49,7,5,30],[8,0,3],[8,7]],
- [80,'Thane Runa the Watcher',310,25,15,2,1,'crystal',[2,16,49,52,24,26,51],[8,4,0],[8]],
- [81,'Thane Fenn the Red',320,30,15,2,1,'lavariver',[2,16,50,36,33,19,5],[8,0,5],[8,7]],
- [82,'Thane Mira the Wise',320,20,15,2,2,'forge',[2,16,48,52,39,12,13],[8,2],[8,7]],
- [83,'Thane Gorm the Stout',340,35,15,2,1,'cavern2',[2,16,38,10,11,49,17],[8,3,2],[8]],
- [84,'Thane Sif the Swarm',340,25,15,2,2,'fungus',[2,16,51,9,43,21,49,5],[8,3,0,7],[8,7]],
- [85,'Thane Hakon the Old',360,30,18,2,1,'abyss',[2,16,50,10,44,49,52,7],[8,3,0,2,7],[8,7]],
- [86,'Durgan the Deep',450,30,18,2,1,'forge',[2,16,50,49,52,51,38,43],[8,0,2,3,4,5,6,7],[8,7]]];
+ [79,'Thane Kell the Black',310,20,11,2,2,'shore',[2,16,48,49,7,5,65,66],[8,0,3],[8,7,12]],
+ [80,'Thane Runa the Watcher',310,25,15,2,1,'crystal',[2,16,49,52,24,26,51,67],[8,4,0],[8,12]],
+ [81,'Thane Fenn the Red',320,30,15,2,1,'lavariver',[2,16,50,36,33,19,65],[8,0,5],[8,7,12]],
+ [82,'Thane Mira the Wise',320,20,15,2,2,'forge',[2,16,48,52,39,12,68,67],[8,2],[8,7,12]],
+ [83,'Thane Gorm the Stout',340,35,15,2,1,'cavern2',[2,16,38,10,11,49,66],[8,3,2],[8,12]],
+ [84,'Thane Sif the Swarm',340,25,15,2,2,'fungus',[2,16,51,9,43,21,65,67],[8,3,0,7],[8,7,12]],
+ [85,'Thane Hakon the Old',360,30,18,2,1,'abyss',[2,16,50,10,44,66,52,68],[8,3,0,2,7],[8,7,12]],
+ [86,'Durgan the Deep',450,30,18,2,1,'forge',[2,16,50,65,52,51,66,67],[8,0,2,3,4,5,6,7],[8,7,12]]];
 const underCastles=UNDER_CASTLES.map(([id,name,health,gold,techReward,difficulty,treeGrowth,bg,units,upgrades,elements],i)=>({
   id,name,position:UNDER_MAP.castles[id],health,gold,techReward,difficulty,treeGrowth,flipped:i%2===1,background:UBG(bg),skin:5,
   units,upgrades,allowsHeals:false,attackGround:true,attackAir:true,elements,...(id===86?{aiFrequency:.5}:{})}));
@@ -205,13 +211,17 @@ function underEntries(texture){
    Miner:anim('Miner',0,0,16,24),MinerWalkAnimation:anim('MinerWalk',0,0,16,24,4),MinerCarryAnimation:anim('MinerCarry',64,0,16,24,4),
    Burrower:anim('Burrower',0,24,32,16),BurrowerWalkAnimation:anim('BurrowerWalk',0,24,32,16,5),BurrowerAttackAnimation:anim('BurrowerAttack',160,24,32,16,3,{Looping:false,RevertWhenOver:true}),
    LavaGolem:anim('LavaGolem',0,40,24,32),LavaGolemWalkAnimation:anim('LavaGolemWalk',0,40,24,32,4),LavaGolemAttackAnimation:anim('LavaGolemAttack',96,40,24,32,4,{Looping:false,RevertWhenOver:true}),
+   MoleRider:anim('MoleRider',0,96,32,16),MoleRiderWalkAnimation:anim('MoleRiderWalk',0,96,32,16,5),MoleRiderAttackAnimation:anim('MoleRiderAttack',160,96,32,16,3,{Looping:false,RevertWhenOver:true}),
+   DrillCart:anim('DrillCart',0,112,32,16),DrillCartWalkAnimation:anim('DrillCartWalk',0,112,32,16,3),DrillCartAttackAnimation:anim('DrillCartAttack',0,112,32,16,3),Bolt:anim('Bolt',96,112,16,8),
+   Crossbow:anim('Crossbow',0,128,16,24),CrossbowWalkAnimation:anim('CrossbowWalk',0,128,16,24,4),CrossbowAttackAnimation:anim('CrossbowAttack',64,128,16,24,3,{Looping:false,RevertWhenOver:true}),
+   Shaman:anim('Shaman',0,152,16,40),ShamanWalkAnimation:anim('ShamanWalk',0,152,16,40,4),ShamanBlessAnimation:anim('ShamanBless',64,152,16,40,1),ShamanReturnAnimation:anim('ShamanReturn',80,152,16,40,4),ShamanPrayAnimation:anim('ShamanPray',144,152,16,40,1),
    Dwarf:anim('Dwarf',0,72,16,24),DwarfWalkAnimation:anim('DwarfWalk',0,72,16,24,4),DwarfReturnAnimation:anim('DwarfReturn',0,72,16,24,4),
    Bat:anim('Bat',64,72,24,10),BatFlyAnimation:anim('BatFly',64,72,24,10,2)};
   for(const v of Object.values(e))v.texture=texture;return e;
 }
 for(const a of ['playerStandard','playerEgyptian'])Object.assign(ATLASES[a].entries,underEntries('spr_under_blue_alpha.png'));
 for(const a of ['computerMedieval','computerEgyptian'])Object.assign(ATLASES[a].entries,underEntries('spr_under_red_alpha.png'));
-Object.assign(UNIT_GEOMETRY,{miner:[-8,-12,8,12],burrower:[-16,-8,16,8],lavaGolem:[-12,-16,12,16],bat:[-12,-5,12,5],dwarf:[-8,-12,8,12]});
+Object.assign(UNIT_GEOMETRY,{miner:[-8,-12,8,12],burrower:[-16,-8,16,8],lavaGolem:[-12,-16,12,16],bat:[-12,-5,12,5],dwarf:[-8,-12,8,12],moleRider:[-16,-8,16,8],drillCart:[-16,-8,16,8],crossbow:[-8,-12,8,12],shaman:[-8,-20,8,20]});
 const UNDER_CASTLE_IDS=underCastles.map(c=>c.id);
 
 // ======================================================================

@@ -4,7 +4,7 @@
   "private": true,
   "description": "Castle Conflict 1.85 web port, wrapped as an iOS app with Capacitor",
   "scripts": {
-    "build": "python3 build.py 3.2 && node scripts/www.js",
+    "build": "python3 build.py 3.3 && node scripts/www.js",
     "ios:add": "npx cap add ios && sh scripts/ios-patch.sh",
     "ios:sync": "npm run build && npx cap sync ios"
   },

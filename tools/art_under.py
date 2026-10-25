@@ -234,3 +234,113 @@ def dwarf_frame(f):
             q = p[x, y] if 0 <= x < W else (0, 0, 0, 0)
             if (q[3] and q[:3] != O[:3]) or (y > 9 and x > 5): put(f, x, y, BEARD if (x + y) % 3 else (200, 90, 30, 255))
     return f
+
+# ------------------------------------------------------------------ v3.3: lava tide, mushrooms, four more units
+MOLE1, MOLE2 = (110, 78, 52, 255), (70, 48, 32, 255)
+IRON1, IRON2 = (150, 150, 165, 255), (90, 90, 105, 255)
+GLOW1, GLOW2 = (120, 255, 200, 255), (40, 180, 140, 255)
+def mole_rider_frame(f):
+    """Burrower (mole) with a small helmeted dwarf sitting on its back, reins in hand."""
+    f = burrower_frame(f).copy(); W, H = f.size
+    rider = outline(from_rows(['.SS.', 'SSSS', 'FFFF', '.BB.', '.VV.'], {'S': STEEL1, 'F': (236, 150, 80, 255), 'B': BEARD, 'V': (110, 76, 44, 255)}))
+    blit(f, rider, W // 2 - 4, 0)
+    return f
+
+def drill_cart_frame(k, team):
+    """32x16: an iron mine cart on two wheels, a big striped drill cone at the front (stripes rotate with k)."""
+    im = Image.new('RGBA', (32, 16), (0, 0, 0, 0))
+    rect(im, 2, 4, 17, 11, IRON2); rect(im, 3, 5, 16, 10, IRON1); rect(im, 3, 5, 16, 5, team)   # cart body with team stripe
+    for x in (5, 13): disc(im, x, 13, 2, (50, 50, 60, 255)); put(im, 5, 13, IRON1); put(im, 13, 13, IRON1)
+    for i in range(12):                                                                      # drill cone 18..30
+        h = max(1, 6 - i // 2); y0 = 8 - h // 2
+        for y in range(y0, y0 + h):
+            c = (230, 200, 90, 255) if ((i + y + k) % 3) else (120, 90, 40, 255)
+            put(im, 18 + i, y, c)
+    return outline(im)
+
+def crossbow_frame(f, attack=False):
+    """Dwarf body with a leather cap instead of the steel helmet and a crossbow held in front."""
+    f = dwarf_frame(f).copy(); p = f.load(); W, H = f.size
+    for y in range(0, 5):
+        for x in range(W):
+            if p[x, y][:3] in (STEEL1[:3], STEEL2[:3]): p[x, y] = (120, 80, 40, 255) if y < 3 else (90, 60, 30, 255)
+    bow = outline(from_rows(['..W..', '..W..', 'IIIII', '..W..', '..W..'], {'W': (120, 90, 40, 255), 'I': IRON1}))
+    blit(f, bow, W - 5, 10 if not attack else 8)
+    return f
+
+def shaman_frame(f):
+    """Priest body: grey-green robe, a red mushroom cap for a hat, glowing staff."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    fb = face_box(f)
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if s < 0.25 and y >= 10: p[x, y] = (150, 170, 140, 255) if v > 0.7 else (90, 110, 90, 255)
+            elif 0.5 < h < 0.7 and s > 0.3: p[x, y] = (90, 110, 90, 255)
+    if fb:
+        x0, x1, top, bot = fb
+        clear_above(f, top - 1, 0, W - 1)
+        cap = outline(from_rows(['...RRRR...', '.RRWRRRWR.', 'RRRRRWRRRR', 'RWRRRRRRWR', 'SSSSSSSSSS'], {'R': (210, 50, 50, 255), 'W': (250, 240, 230, 255), 'S': (230, 220, 200, 255)}))
+        blit(f, cap, max(0, x0 - 3), top - 5)
+    for y in range(14, 30): put(f, W - 2, y, (110, 76, 44, 255))
+    blit(f, outline(from_rows(['.G.', 'GLG', '.G.'], {'G': GLOW2, 'L': GLOW1})), W - 3, 11)
+    return f
+
+def bolt():
+    im = Image.new('RGBA', (16, 8), (0, 0, 0, 0))
+    rect(im, 3, 3, 13, 3, IRON1); rect(im, 13, 2, 14, 4, (230, 230, 240, 255)); rect(im, 2, 2, 3, 4, (120, 80, 40, 255))
+    return im
+
+def mushroom():
+    im = Image.new('RGBA', (12, 12), (0, 0, 0, 0))
+    rect(im, 5, 6, 6, 11, (210, 200, 170, 255))
+    for y, (x0, x1) in enumerate(((4, 7), (2, 9), (1, 10), (1, 10))): rect(im, x0, 2 + y, x1, 2 + y, GLOW2 if y else GLOW1)
+    put(im, 3, 4, GLOW1); put(im, 8, 5, GLOW1)
+    return outline(im)
+
+def tide_icon():
+    im = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    rect(im, 0, 3, 15, 12, (40, 30, 30, 255))
+    for x in range(1, 15): rect(im, x, 7 + ((x // 2) % 2), x, 11, LAVA1 if x % 3 else LAVA2)
+    return outline(im)
+
+def unit_sheet_v33(src, out):
+    team = (88, 164, 255, 255) if src is BLUE else (217, 122, 84, 255)
+    big = Image.new('RGBA', (256, 192), (0, 0, 0, 0)); big.alpha_composite(out, (0, 0))
+    def row(fs, x, y):
+        for i, fr in enumerate(fs): big.alpha_composite(fr, (x + i * fr.width, y))
+    row([mole_rider_frame(f) for f in frames(src, 160, 352, 32, 16, 5)], 0, 96)       # Mole rider walk (0,96)
+    row([mole_rider_frame(f) for f in frames(src, 160, 368, 32, 16, 3)], 160, 96)     # attack (160,96)
+    row([drill_cart_frame(k, team) for k in range(3)], 0, 112)                         # Drill cart (0,112) x3
+    big.alpha_composite(bolt(), (96, 112))                                             # Bolt (96,112)
+    row([crossbow_frame(f) for f in frames(src, 0, 0, 16, 24, 4)], 0, 128)             # Crossbow walk (0,128)
+    row([crossbow_frame(f, True) for f in frames(src, 0, 0, 16, 24, 3)], 64, 128)      # attack (64,128)
+    row([shaman_frame(f) for f in frames(src, 128, 128, 16, 40, 4)], 0, 152)           # Shaman walk (0,152)
+    row([shaman_frame(f) for f in frames(src, 192, 128, 16, 40, 1)], 64, 152)          # bless
+    row([shaman_frame(f) for f in frames(src, 208, 128, 16, 40, 4)], 80, 152)          # return
+    row([shaman_frame(f) for f in frames(src, 272, 128, 16, 40, 1)], 144, 152)         # pray
+    return big
+
+def units():
+    unit_sheet_v33(BLUE, unit_sheet(BLUE)).save(os.path.join(A, 'spr_under_blue_alpha.png'))
+    unit_sheet_v33(RED, unit_sheet(RED)).save(os.path.join(A, 'spr_under_red_alpha.png'))
+
+def fx_sheet():
+    out = Image.new('RGBA', (160, 64), (0, 0, 0, 0))
+    out.alpha_composite(ore(), (0, 0)); out.alpha_composite(seal(), (16, 0)); out.alpha_composite(anvil(), (32, 0)); out.alpha_composite(tunnel_mouth(), (56, 0))
+    for k in range(3): out.alpha_composite(lava_column(k), (80 + 24 * k, 0))
+    out.alpha_composite(lava_pool(), (0, 48)); out.alpha_composite(mushroom(), (112, 48)); out.alpha_composite(tide_icon(), (128, 48))
+    out.save(os.path.join(A, 'spr_under_fx_alpha.png'))
+
+_register_icons_v31 = register_icons
+def register_icons():
+    _register_icons_v31()
+    import art_hud as H
+    from art_north import body_icon
+    S = lambda side: Image.open(os.path.join(A, 'spr_under_blue_alpha.png' if side == 0 else 'spr_under_red_alpha.png')).convert('RGBA')
+    H.register((3, 3), lambda h, sel, side: body_icon(h, sel, S(side), (0, 96, 32, 16)))     # mole rider
+    H.register((4, 3), lambda h, sel, side: body_icon(h, sel, S(side), (0, 112, 32, 16)))    # drill cart
+    H.register((5, 3), lambda h, sel, side: body_icon(h, sel, S(side), (0, 128, 16, 24)))    # crossbow dwarf
+    H.register((6, 3), lambda h, sel, side: body_icon(h, sel, S(side), (64, 152, 16, 40)))   # shaman
