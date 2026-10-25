@@ -13,10 +13,10 @@ const SKINS=[
  {name:'Medieval',file:'MedievalSkin',left:{units:'playerStandard',castle:'CastlePlayer',buttons:'sprites_hud_alpha.png'},right:{units:'computerMedieval',castle:'CastleEnemy',buttons:'sprites_redhud_big_alpha.png'}},
  {name:'Egyptian Pyramid',file:'EgyptianSkin',left:{units:'playerEgyptian',castle:'PyramidPlayer',buttons:'sprites_egypt_bluehud_big_alpha.png'},right:{units:'computerEgyptian',castle:'PyramidEnemy',buttons:'sprites_egypt_redhud_big_alpha.png'}},
  {name:'Egyptian Temple',file:'EgyptianTempleSkin',left:{units:'playerEgyptian',castle:'TemplePlayer',buttons:'sprites_egypt_bluehud_big_alpha.png'},right:{units:'computerEgyptian',castle:'TempleEnemy',buttons:'sprites_egypt_redhud_big_alpha.png'}},
- {name:'Northern Fortress',file:'NorthernSkin',left:{units:'playerStandard',castle:'NorthPlayer',buttons:'sprites_hud_alpha.png'},right:{units:'computerMedieval',castle:'NorthEnemy',buttons:'sprites_redhud_big_alpha.png'}},
- {name:'Eastern Castle',file:'EasternSkin',left:{units:'playerStandard',castle:'EastPlayer',buttons:'sprites_hud_alpha.png'},right:{units:'computerMedieval',castle:'EastEnemy',buttons:'sprites_redhud_big_alpha.png'}},
- {name:'Dwarven Hold',file:'UnderSkin',left:{units:'playerStandard',castle:'UnderPlayer',buttons:'sprites_hud_alpha.png'},right:{units:'computerMedieval',castle:'UnderEnemy',buttons:'sprites_redhud_big_alpha.png'}},
- {name:'Sky Spire',file:'SkySkin',left:{units:'playerStandard',castle:'SkyPlayer',buttons:'sprites_hud_alpha.png'},right:{units:'computerMedieval',castle:'SkyEnemy',buttons:'sprites_redhud_big_alpha.png'}}];
+ {name:'Northern Fortress',file:'NorthernSkin',left:{units:'playerStandard_north',castle:'NorthPlayer',buttons:'sprites_hud_north_alpha.png'},right:{units:'computerMedieval_north',castle:'NorthEnemy',buttons:'sprites_redhud_north_alpha.png'}},
+ {name:'Eastern Castle',file:'EasternSkin',left:{units:'playerStandard_east',castle:'EastPlayer',buttons:'sprites_hud_east_alpha.png'},right:{units:'computerMedieval_east',castle:'EastEnemy',buttons:'sprites_redhud_east_alpha.png'}},
+ {name:'Dwarven Hold',file:'UnderSkin',left:{units:'playerStandard_under',castle:'UnderPlayer',buttons:'sprites_hud_under_alpha.png'},right:{units:'computerMedieval_under',castle:'UnderEnemy',buttons:'sprites_redhud_under_alpha.png'}},
+ {name:'Sky Spire',file:'SkySkin',left:{units:'playerStandard_sky',castle:'SkyPlayer',buttons:'sprites_hud_sky_alpha.png'},right:{units:'computerMedieval_sky',castle:'SkyEnemy',buttons:'sprites_redhud_sky_alpha.png'}}];
 // PreDefineScenery sets (canvas coordinates for sparkles: y = 320 - cocos y)
 const SCENERY={
  hill:{birds:'light',sparkles:[[235,140],[345,210],[245,280]]},

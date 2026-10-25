@@ -302,3 +302,11 @@ for(const a of ['computerMedieval','computerEgyptian'])Object.assign(ATLASES[a].
 Object.assign(UNIT_GEOMETRY,{bridger:[-8,-12,8,12],griffin:[-24,-16,24,16],thunder:[-8,-18,8,18],angel:[-10,-16,10,16],battleship:[-32,-24,32,24],shepherd:[-16,-8,16,8],lancer:[-8,-26,8,26],guardian:[-12,-16,12,16],harpist:[-8,-20,8,20]});
 const SKY_CASTLE_IDS=skyCastles.map(c=>c.id);
 Object.assign(exports,{CONTENT,NORTH_CASTLE_IDS,EAST_CASTLE_IDS,UNDER_CASTLE_IDS,SKY_CASTLE_IDS});
+
+// ======================================================================
+// v3.6 - unit skins: the whole army changes colours with the castle skin. One recoloured copy of every
+//   unit sheet per expansion realm (tools/art_skins.py); a realm's own units keep their original colours.
+for(const r of ['north','east','under','sky'])for(const [src,tex] of [['playerStandard','blue'],['computerMedieval','red']]){
+  const a=clone(src,`spr_skin_${r}_${tex}_alpha.png`);
+  for(const e of Object.values(a.entries))if(e.texture){const m=e.texture.match(/^spr_(north|east|under|sky)_(blue|red)_alpha\.png$/);if(m&&m[1]!==r)e.texture=`spr_${m[1]}_${m[2]}_${r}_alpha.png`;}
+  ATLASES[`${src}_${r}`]=a;}
