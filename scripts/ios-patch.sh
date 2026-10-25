@@ -15,7 +15,7 @@ set_key UIStatusBarHidden true bool
 set_key UIViewControllerBasedStatusBarAppearance false bool
 set_key UIRequiresFullScreen true bool
 set_key CFBundleDisplayName "Castle Conflict" string
-set_key CFBundleShortVersionString "3.4" string
+set_key CFBundleShortVersionString "3.5" string
 set_key ITSAppUsesNonExemptEncryption false bool
 # App icon (single 1024 px icon, Xcode 14+ style) and splash
 ICON=ios/App/App/Assets.xcassets/AppIcon.appiconset

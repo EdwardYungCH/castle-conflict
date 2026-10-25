@@ -338,3 +338,147 @@ def rune_frame(f):
     for (x, y) in ((5, 29), (8, 32), (4, 35), (7, 37)): 
         if 0 <= x < W and 0 <= y < H and opaque(px[x, y]): px[x, y] = RUNE
     return f
+
+# ------------------------------------------------------------------ v3.5: the frozen lake and five more units
+ICE1, ICE2 = (200, 235, 255, 255), (120, 180, 230, 255)
+def fisher_frame(f, rod=False, k=0):
+    """Woodcutter in a fur hat and a thick coat; when fishing he holds a rod over the hole."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if y < 5 and 0.5 < h < 0.7: p[x, y] = FUR1 if (x + y) % 2 else FUR2                    # cap -> fur hat
+            elif 10 < y < 19 and (r, g, b) in SKIN and 2 < x < 10: p[x, y] = (80, 110, 150, 255) if v > .8 else (60, 85, 120, 255)   # bare chest -> coat
+            elif .02 < h < .12 and s > .4 and y > 12 and v > .5: p[x, y] = ICE2                  # log -> a fish (ice blue)
+    if rod:
+        for y in range(4 + k, 16): put(f, W - 2, y, (120, 80, 40, 255))
+        for i in range(4): put(f, W - 2 + (i if i < 3 else 2), 3 + k - (i if i < 3 else 2), (120, 80, 40, 255))
+        put(f, W - 1, 20, ICE1)
+    return f
+
+def owl_frame(k):
+    """24x16 white owl, wings up / down."""
+    im = Image.new('RGBA', (24, 16), (0, 0, 0, 0)); up = k % 2 == 0
+    disc(im, 12, 9, 4, (245, 245, 250, 255)); disc(im, 12, 4, 3, (245, 245, 250, 255))
+    put(im, 11, 3, (40, 40, 50, 255)); put(im, 13, 3, (40, 40, 50, 255)); put(im, 12, 5, (230, 170, 60, 255))
+    for side in (-1, 1):
+        for i in range(8):
+            x = 12 + side * (4 + i); y = (4 - i // 2) if up else (9 + i // 2)
+            put(im, x, y, (225, 228, 235, 255)); put(im, x, y + 1, (190, 196, 210, 255))
+    for x in (10, 14): put(im, x, 13, (230, 170, 60, 255))
+    return outline(im)
+
+def huntress_frame(f):
+    """Archer in a white fur hood and pale leathers; the arrow tips glow ice-blue."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    fb = face_box(f)
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if 0.5 < h < 0.7 and s > 0.3: p[x, y] = (210, 200, 180, 255) if v > .6 else (150, 135, 110, 255)   # tunic -> leathers
+            elif y < 8 and hsv(r, g, b)[1] < .15 and v > .8 and x > W - 6: p[x, y] = ICE2             # arrow -> ice
+    if fb:
+        x0, x1, top, bot = fb
+        clear_above(f, top - 1, 0, W - 1)
+        blit(f, hood(min(W, x1 - x0 + 5), (235, 235, 240, 255)), max(0, x0 - 2), top - 4)
+        for y in range(top, bot + 1): put(f, x0 - 1, y, (235, 235, 240, 255)); put(f, x0 - 2, y, O)
+    return f
+
+def trapper_frame(f):
+    """Engineer body in a fur hat and brown coat, a bear trap hanging from his hand."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if y < 5 and (0.5 < h < 0.7 or (0.2 < h < 0.45 and s > .3)): p[x, y] = FUR1 if (x + y) % 2 else FUR2
+            elif 0.2 < h < 0.45 and s > .3: p[x, y] = (120, 85, 50, 255) if v > .5 else (85, 60, 35, 255)   # green -> brown coat
+            elif 0.5 < h < 0.7 and s > 0.3: p[x, y] = (85, 60, 35, 255)
+    blit(f, bear_trap(), W - 7, 15)
+    return f
+
+def bear_trap():
+    im = Image.new('RGBA', (12, 8), (0, 0, 0, 0))
+    rect(im, 1, 5, 10, 6, (120, 125, 140, 255))
+    for x in range(1, 11, 2): put(im, x, 4, (190, 196, 210, 255)); put(im, x, 3 if x % 4 == 1 else 4, (190, 196, 210, 255))
+    put(im, 5, 2, (190, 196, 210, 255)); put(im, 6, 2, (190, 196, 210, 255))
+    return outline(im)
+
+def skald_frame(f):
+    """Priest body as a norse bard: no mitre, blond braids, a dark blue cloak, a lyre held in front."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    fb = face_box(f)
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if s < 0.25 and y >= 10: p[x, y] = (60, 80, 130, 255) if v > 0.7 else (40, 55, 95, 255)
+            elif 0.5 < h < 0.7 and s > 0.3: p[x, y] = FUR1
+    if fb:
+        x0, x1, top, bot = fb
+        clear_above(f, top - 1, 0, W - 1)
+        hair = outline(from_rows(['.' + '#' * (x1 - x0 + 1) + '.', '#' * (x1 - x0 + 3)], {'#': (225, 181, 45, 255)})); blit(f, hair, x0 - 1, top - 2)
+        for y in range(top, min(H, bot + 8)): put(f, x0 - 1, y, (225, 181, 45, 255) if y % 3 else (178, 110, 44, 255)); put(f, x0 - 2, y, O)
+    lyre = outline(from_rows(['G.G', 'G.G', 'GGG', '.G.'], {'G': (200, 150, 60, 255)})); blit(f, lyre, W - 4, 21)
+    put(f, W - 3, 22, (250, 250, 250, 255)); put(f, W - 3, 23, (250, 250, 250, 255))
+    return f
+
+def ice_arrow():
+    im = Image.new('RGBA', (16, 8), (0, 0, 0, 0))
+    rect(im, 2, 3, 12, 3, (230, 230, 240, 255)); rect(im, 12, 2, 14, 4, ICE2); put(im, 15, 3, ICE1); rect(im, 2, 2, 3, 4, (120, 80, 40, 255))
+    return im
+
+def lake_icon():
+    im = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    rect(im, 0, 6, 15, 13, ICE1); rect(im, 0, 13, 15, 14, ICE2)
+    disc(im, 8, 9, 2, (30, 60, 90, 255)); put(im, 3, 7, (255, 255, 255, 255)); put(im, 12, 11, (255, 255, 255, 255))
+    for x in (1, 14): rect(im, x, 1, x, 5, (60, 120, 60, 255)); put(im, x - 1 if x else 0, 2, (60, 120, 60, 255)); put(im, min(15, x + 1), 2, (60, 120, 60, 255))
+    return outline(im)
+
+def unit_sheet_v35(src, out):
+    big = Image.new('RGBA', (256, 232), (0, 0, 0, 0)); big.alpha_composite(out, (0, 0))
+    def row(fs, x, y):
+        for i, fr in enumerate(fs): big.alpha_composite(fr, (x + i * fr.width, y))
+    row([fisher_frame(f) for f in frames(src, 0, 0, 16, 24, 4)], 0, 144)                     # Fisher walk (0,144)
+    row([fisher_frame(f) for f in frames(src, 0, 48, 16, 24, 4)], 64, 144)                   # carry (64,144)
+    row([fisher_frame(f, True, k) for k, f in enumerate(frames(src, 0, 0, 16, 24, 2))], 128, 144)   # fishing (128,144) x2
+    row([owl_frame(k) for k in range(2)], 160, 144)                                           # Owl (160,144) 24x16 x2
+    big.alpha_composite(ice_arrow(), (208, 144))                                              # IceArrow (208,144)
+    row([huntress_frame(f) for f in frames(src, 64, 72, 16, 24, 4)], 0, 168)                 # Huntress walk (0,168)
+    row([huntress_frame(f) for f in frames(src, 64, 96, 16, 24, 3)], 64, 168)                # attack (64,168)
+    row([trapper_frame(f) for f in frames(src, 64, 48, 16, 24, 4)], 112, 168)                # Trapper walk (112,168)
+    big.alpha_composite(bear_trap(), (176, 168))                                              # BearTrap (176,168) 12x8
+    row([skald_frame(f) for f in frames(src, 128, 128, 16, 40, 4)], 0, 192)                  # Skald walk (0,192)
+    row([skald_frame(f) for f in frames(src, 192, 128, 16, 40, 1)], 64, 192)                 # bless
+    row([skald_frame(f) for f in frames(src, 208, 128, 16, 40, 4)], 80, 192)                 # return
+    row([skald_frame(f) for f in frames(src, 272, 128, 16, 40, 1)], 144, 192)                # pray
+    return big
+
+def units():
+    unit_sheet_v35(BLUE, unit_sheet(BLUE)).save(os.path.join(A, 'spr_north_blue_alpha.png'))
+    unit_sheet_v35(RED, unit_sheet(RED)).save(os.path.join(A, 'spr_north_red_alpha.png'))
+
+_fx_sheet_v31 = fx_sheet
+def fx_sheet():
+    _fx_sheet_v31()
+    im = Image.open(os.path.join(A, 'spr_north_fx_alpha.png')).convert('RGBA')
+    out = Image.new('RGBA', (192, 64), (0, 0, 0, 0)); out.alpha_composite(im, (0, 0))
+    out.alpha_composite(lake_icon(), (128, 0)); out.alpha_composite(bear_trap(), (176, 48))
+    out.save(os.path.join(A, 'spr_north_fx_alpha.png'))
+
+_register_icons_v31 = register_icons
+def register_icons():
+    _register_icons_v31()
+    import art_hud as H
+    S = lambda side: Image.open(os.path.join(A, 'spr_north_blue_alpha.png' if side == 0 else 'spr_north_red_alpha.png')).convert('RGBA')
+    H.register((1, 4), lambda h, sel, side: body_icon(h, sel, S(side), (128, 144, 16, 24)))   # fisher with rod
+    H.register((2, 4), lambda h, sel, side: body_icon(h, sel, S(side), (160, 144, 24, 16)))   # owl
+    H.register((3, 4), lambda h, sel, side: body_icon(h, sel, S(side), (64, 168, 16, 24)))    # huntress
+    H.register((4, 4), lambda h, sel, side: body_icon(h, sel, S(side), (112, 168, 16, 24)))   # trapper
+    H.register((5, 4), lambda h, sel, side: body_icon(h, sel, S(side), (64, 192, 16, 40)))    # skald
