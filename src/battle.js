@@ -1,7 +1,7 @@
 // GameScene presentation: castles, scenery, units, HUD, hints, quit/pause/help, end sequence.
 const C=require("core");
 const {Node,Scene,Menu,Button,Label,Img,DrawNode,Director,Audio,sfx,sprite,drawEntry,text,textWidth,entry,CON,btn,Store}=C;
-const {Battle,UNITS,ground,unitY,unitBounds,AIR_Y}=require("engine");
+const {Battle,UNITS,ground,unitY,unitBounds,AIR_Y,HIGH_Y}=require("engine");
 const {ATLASES}=require("atlases");
 const D=require("data");
 const {shouldQuit}=require("dialogs");
@@ -51,7 +51,7 @@ class BattleScene extends Scene{
     const tg=D.TREE_GROWTH[P.treeGrowth]??D.TREE_GROWTH[1];
     const opts={ai:P.mode===2?[false,false]:[false,true],difficulty:P.difficulty,campaign:P.mode===1||!!P.campaign,campaignDifficulty:P.campaignDifficulty??0,globalDifficulty:P.globalDifficulty??0,
       rosters:[P.playerUnits,P.enemyUnits],cannons:P.cannons,hint:P.hint,easyQuick:P.easyQuick,aiFrequency:P.aiFrequency,mode:P.mode,
-      config:{startWood:P.startGold,castleHealth:P.playerHealth,treeChance:tg.treeChance,maxTrees:tg.maxTrees,allowHeals:P.allowHeals,tallTrees:P.elements.includes(1),antlion:P.elements.includes(2),blizzard:P.elements.includes(3),thinIce:P.elements.includes(4),fog:P.elements.includes(5),alwaysFog:!!P.alwaysFog,bridge:P.elements.includes(6),lava:P.elements.includes(7),tunnel:P.elements.includes(8),gaps:P.elements.includes(9),wind:P.elements.includes(10),bamboo:P.elements.includes(11),tide:P.elements.includes(12)}};
+      config:{startWood:P.startGold,castleHealth:P.playerHealth,treeChance:tg.treeChance,maxTrees:tg.maxTrees,allowHeals:P.allowHeals,tallTrees:P.elements.includes(1),antlion:P.elements.includes(2),blizzard:P.elements.includes(3),thinIce:P.elements.includes(4),fog:P.elements.includes(5),alwaysFog:!!P.alwaysFog,bridge:P.elements.includes(6),lava:P.elements.includes(7),tunnel:P.elements.includes(8),gaps:P.elements.includes(9),wind:P.elements.includes(10),bamboo:P.elements.includes(11),tide:P.elements.includes(12),lanes:P.elements.includes(13)}};
     this.battle=restore?Battle.restore(restore,opts):new Battle(opts);const b=this.battle;
     if(!restore){b.sides[0].hp=b.sides[0].maxHp=P.playerHealth;b.sides[1].hp=b.sides[1].maxHp=P.enemyHealth;}
     this.skinL=D.SKINS[P.playerSkin].left;this.skinR=D.SKINS[P.mode===2?P.enemySkin:P.enemySkin].right;
@@ -89,6 +89,9 @@ class BattleScene extends Scene{
     const ext=C.VIEW.ext;this.hudMode=!this.modern?'top':ext>=50?'wide':'top';
     let place=top;if(this.bar){place=k=>[48*(k+1),344];place.labelY=y=>381;}
     mk(0,b.rosters[0],this.skinL.buttons,place,P.doubleIncome);
+    // Sky Realm lanes: a toggle that sends the next airships along the high lane
+    if(b.lanes&&P.mode!==2){this.high=false;const m=new Menu();m.visible=false;const [tx,ty]=this.bar?[-ext+28,344]:[240,300];
+      const bt=new StoneBtn(tx,ty,()=>{if(!this.activeHud()||Director.paused)return;this.high=!this.high;sfx('select.wav');},{label:'LOW',font:'tiny'});bt.labelScale=1;this.laneBtn=bt;bt.drawExtra=ctx=>{text(ctx,'tiny',this.high?'HIGH':'LOW',bt.x,bt.y+1);};bt.label=null;m.add(bt);this.add(m);this.laneMenu=m;}
     if(P.mode===2){const bot=k=>[480-48*(k+1),294];bot.labelY=y=>262;mk(1,b.rosters[1],this.skinR.buttons,bot,false);}
   }
   buildHud(){
@@ -112,7 +115,7 @@ class BattleScene extends Scene{
   activeHud(){return this.hudVisible&&!this.gameOver&&!this.quitLayer;}
   buy(side,type){
     const b=this.battle;if(!this.buyingAllowed||Director.paused||this.gameOver)return;
-    if(b.spawn(side,type)){sfx('buy.wav');}
+    if(b.spawn(side,type,{high:!!this.high})){sfx('buy.wav');}
   }
   buyDouble(side){if(!this.buyingAllowed||Director.paused)return;if(this.battle.buyDoubleIncome(side)){sfx('buy.wav');const it=this.unitMenus[side].children.find(c=>c.isDouble);if(it)it.enabled=false;}}
   createGod(){this.ultimateClicks++;if(this.ultimateClicks>2){this.ultimateClicks=0;if(this.battle.running){this.battle.createUnit(0,'unicorn');this.battle.sides[0].unicorn=true;}}}
@@ -189,7 +192,7 @@ class BattleScene extends Scene{
         case 'blimp':play(e.unitType==='bomber'?'bomber.wav':e.unitType==='napalm'?'napalmjet.wav':'blimp.wav');break;
         case 'drop':play('bombsaway.wav');break;case 'treeLand':play('treestick.wav');break;case 'fuse':play('petardfuse.wav');break;
         case 'fireball':play('fireball.wav');break;case 'ice':play('ice.wav');break;case 'polymorph':play('polytree.wav');break;case 'witch':play('polymorph.wav');break;
-        case 'bless':play('bless.wav');break;case 'lantern':play('bless.wav');break;case 'tideWarn':play('petardfuse.wav');break;case 'tide':play('explosionbig.wav');break;case 'vein':play('yay.wav');break;case 'burn':play('fireball.wav');break;case 'crew':play('yay.wav');break;case 'reveal':play('select.wav');break;case 'blizzard':play('ice.wav');break;case 'lavaWarn':play('petardfuse.wav');break;case 'erupt':play('explosionbig.wav');break;case 'lavaKill':play('groundkill.wav');break;case 'lavaPool':play('fireball.wav');break;case 'seal':play('treestick.wav');break;case 'sealBroken':play('explosion.wav');break;case 'fog':play('blimp.wav');break;case 'bridgeBreak':play('explosionbig.wav');break;case 'bridgeHit':play('castlehit.wav');break;case 'bridgeFixed':play('treestick.wav');break;case 'stone':play('bombsaway.wav');break;case 'wind':play('bless.wav');break;case 'cranes':play('polymorph.wav');break;case 'craneCatch':play('treechop.wav');break;case 'iceFall':play('ice.wav');play('groundkill.wav');break;case 'crew':play('explosion.wav');break;case 'necro':play('necro.wav');break;case 'fall':play('groundkill.wav');break;case 'gust':play('bless.wav');break;case 'bridge':play('treestick.wav');break;case 'dive':play('groundkill.wav');break;case 'bolt':play('fireball.wav');if(e.unitType)play('explosionbig.wav');break;case 'flak':play('buy.wav');break;case 'revive':play('yay.wav');break;case 'worm':play('wurm.wav');break;case 'wormDie':play('wurmdie.wav');break;
+        case 'bless':play('bless.wav');break;case 'lantern':play('bless.wav');break;case 'tideWarn':play('petardfuse.wav');break;case 'shear':play('treechop.wav');break;case 'lance':play('groundkill.wav');break;case 'harp':play('bless.wav');break;case 'climb':play('yay.wav');break;case 'tide':play('explosionbig.wav');break;case 'vein':play('yay.wav');break;case 'burn':play('fireball.wav');break;case 'crew':play('yay.wav');break;case 'reveal':play('select.wav');break;case 'blizzard':play('ice.wav');break;case 'lavaWarn':play('petardfuse.wav');break;case 'erupt':play('explosionbig.wav');break;case 'lavaKill':play('groundkill.wav');break;case 'lavaPool':play('fireball.wav');break;case 'seal':play('treestick.wav');break;case 'sealBroken':play('explosion.wav');break;case 'fog':play('blimp.wav');break;case 'bridgeBreak':play('explosionbig.wav');break;case 'bridgeHit':play('castlehit.wav');break;case 'bridgeFixed':play('treestick.wav');break;case 'stone':play('bombsaway.wav');break;case 'wind':play('bless.wav');break;case 'cranes':play('polymorph.wav');break;case 'craneCatch':play('treechop.wav');break;case 'iceFall':play('ice.wav');play('groundkill.wav');break;case 'crew':play('explosion.wav');break;case 'necro':play('necro.wav');break;case 'fall':play('groundkill.wav');break;case 'gust':play('bless.wav');break;case 'bridge':play('treestick.wav');break;case 'dive':play('groundkill.wav');break;case 'bolt':play('fireball.wav');if(e.unitType)play('explosionbig.wav');break;case 'flak':play('buy.wav');break;case 'revive':play('yay.wav');break;case 'worm':play('wurm.wav');break;case 'wormDie':play('wurmdie.wav');break;
         case 'castleHit':play('castlehit.wav');if(this.modern&&e.amount>0)this.floats.push({str:'-'+e.amount,font:'tinyRed',x:e.side===0?48:432,y:150,life:0});break;
         case 'fight':play('groundkill.wav');if(this.modern&&e.x!==undefined)this.sparks.push({x:e.x,y:e.y,t:0});break;
         case 'gold':this.floats.push({str:(e.amount>0?'+':'')+e.amount,font:e.amount>0?'tiny':'tinyRed',x:e.x,y:e.y,life:0});break;
@@ -224,7 +227,8 @@ class BattleScene extends Scene{
     for(const m of this.unitMenus)for(const it of m.children){
       const side=it.side,gold=b.sides[side].wood;if(!this.gameOver)it.opacity=it.price<=gold?255:100;
       if(this.bar){ctx.save();ctx.globalAlpha=it.opacity/255*.92;ctx.fillStyle='#dfe6f0';ctx.beginPath();ctx.roundRect(it.x-21,it.y-21,42,42,7);ctx.fill();ctx.restore();}
-      it.drawSelf(ctx);text(ctx,this.modern&&it.price>gold?'red':'blue',it.price,it.x,it.labelY);}}
+      it.drawSelf(ctx);text(ctx,this.modern&&it.price>gold?'red':'blue',it.price,it.x,it.labelY);}
+    if(this.laneBtn){this.laneBtn.drawSelf(ctx);text(ctx,'tiny','lane',this.laneBtn.x,this.laneBtn.y+(this.bar?37:-30));}}
   // the unit bar under the world (new interface on phones)
   drawBottom(ctx){const e=C.VIEW.ext,W=C.VIEW.w;ctx.save();ctx.fillStyle='#17151f';ctx.fillRect(-e,320,W,C.VIEW.bottom);ctx.fillStyle='#d8a53a';ctx.fillRect(-e,320,W,2);ctx.fillStyle='#5a4a2a';ctx.fillRect(-e,322,W,1);ctx.restore();
     if(this.hudVisible)this.drawUnitButtons(ctx);}
@@ -288,6 +292,7 @@ class BattleScene extends Scene{
     if(C.VIEW.ext>0)for(const s of [0,1]){const ups=s===0?P.playerUpgrades:P.enemyUpgrades,atlas=this.castleAtlas[s];ctx.save();if(s===0)ctx.scale(-1,1);else{ctx.translate(960,0);ctx.scale(-1,1);}
       if(this.debris[s])drawEntry(ctx,atlas,'CastleDebris',s===0?48:432,255);else{drawEntry(ctx,atlas,'Castle',s===0?48:432,191);if(ups.includes(0))drawEntry(ctx,atlas,'Tower',...UPG_POS[0][s]);}ctx.restore();}
     if(!this.bar)this.drawUnitButtons(ctx);
+    if(b.clouds){ctx.save();for(const c of b.clouds.list){const k=Math.min(1,(b.time-c.born)/1);ctx.globalAlpha=.92*k;ctx.fillStyle='#ffffff';for(const [dx,dy,r] of [[-10,2,9],[0,-3,11],[11,2,8],[-2,5,9]]){ctx.beginPath();ctx.ellipse(c.x+dx,HIGH_Y+dy,r,r*.7,0,0,Math.PI*2);ctx.fill();}ctx.globalAlpha=.35*k;ctx.fillStyle='#8fb3d9';ctx.fillRect(c.x-18,HIGH_Y+8,36,2);}ctx.restore();}
     // unit layers: player atlas then enemy atlas (spawn order)
     for(const s of [0,1]){
       const atlas=this.unitAtlas[s],items=[];

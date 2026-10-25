@@ -250,3 +250,113 @@ def thunder_frame(f):
         return None
     f = recolor(f, fn); blit(f, lightning(), 6, 6)
     return f
+
+# ------------------------------------------------------------------ v3.4: air lanes, drifting clouds, four more units
+STONE1, STONE2, MOSS, RUNE = (200, 205, 215, 255), (130, 138, 155, 255), (90, 160, 90, 255), (120, 220, 255, 255)
+def shepherd_frame(f):
+    """Small zeppelin turned into a white cloud-raft; a shepherd with a crook stands on the gondola."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if y < 10: p[x, y] = CLOUD1 if (x + y) % 3 else CLOUD2                     # envelope -> cloud
+    man = outline(from_rows(['.S.', 'SSS', '.B.', '.B.'], {'S': (236, 150, 80, 255), 'B': SKY2}))
+    blit(f, man, W // 2 + 2, 6)
+    for y in range(4, 12): put(f, W // 2 + 6, y, (120, 80, 40, 255))
+    put(f, W // 2 + 5, 4, (120, 80, 40, 255)); put(f, W // 2 + 7, 4, (120, 80, 40, 255))
+    return f
+
+def lancer_frame(f):
+    """Pikeman in sky blue with a winged silver helmet; the pike becomes a long gold-tipped lance."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if 0.3 < h < 0.48 and s > 0.4: p[x, y] = CLOUD1                                 # plume -> white wing
+            elif 0.08 < h < 0.16 and s > .5 and v > .7 and y < 30: p[x, y] = GOLD1 if y < 6 else (190, 190, 200, 255)   # shaft -> silver, tip gold
+            elif 0.5 < h < 0.7 and s > 0.3: p[x, y] = SKY1 if v > .6 else SKY2
+    return f
+
+def guardian_frame(f):
+    """Golem in pale stone with moss on the shoulders and glowing blue runes on the chest."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if s < .35: p[x, y] = STONE1 if v > .6 else STONE2
+            elif 0.5 < h < 0.75 and s > 0.3: p[x, y] = STONE2
+            elif .02 < h < .14 and s > .4: p[x, y] = STONE1 if v > .6 else STONE2
+    for (x, y) in ((4, 8), (5, 7), (18, 8), (17, 7), (6, 8), (16, 8)):
+        if 0 <= x < W and p[x, y][3] and p[x, y][:3] != O[:3]: p[x, y] = MOSS
+    for (x, y) in ((11, 14), (12, 15), (11, 16), (10, 15)):
+        if 0 <= x < W and 0 <= y < H and p[x, y][3] and p[x, y][:3] != O[:3]: p[x, y] = RUNE
+    return f
+
+def harpist_frame(f):
+    """Priest body: no mitre, long golden hair, white-and-gold gown, a small harp held in front."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    fb = face_box(f)
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if s < 0.25 and y >= 10: p[x, y] = CLOUD1 if v > 0.7 else (220, 205, 160, 255)
+            elif 0.5 < h < 0.7 and s > 0.3: p[x, y] = GOLD2
+    if fb:
+        x0, x1, top, bot = fb
+        clear_above(f, top - 1, 0, W - 1)
+        hair = outline(from_rows(['.' + '#' * (x1 - x0 + 1) + '.', '#' * (x1 - x0 + 3)], {'#': GOLD1})); blit(f, hair, x0 - 1, top - 2)
+        for y in range(top, min(H, bot + 9)): put(f, x0 - 1, y, GOLD1 if y % 2 else GOLD2); put(f, x0 - 2, y, O)
+    harp = outline(from_rows(['G..', 'GG.', 'G.G', 'GGG'], {'G': GOLD2})); blit(f, harp, W - 4, 21)
+    for y in range(22, 25): put(f, W - 2, y, (250, 250, 250, 255))
+    return f
+
+def cloud_icon():
+    im = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    for cx, cy, r in ((5, 9, 4), (9, 7, 5), (12, 10, 3)): disc(im, cx, cy, r, CLOUD1)
+    rect(im, 2, 3, 6, 3, SKY2); rect(im, 9, 2, 14, 2, SKY2)      # two lane lines
+    return outline(im)
+
+def unit_sheet_v34(src, out):
+    big = Image.new('RGBA', (256, 284), (0, 0, 0, 0)); big.alpha_composite(out, (0, 0))
+    def row(fs, x, y):
+        for i, fr in enumerate(fs): big.alpha_composite(fr, (x + i * fr.width, y))
+    row([shepherd_frame(f) for f in frames(src, 0, 352, 32, 16, 2)], 0, 192)       # Shepherd (0,192) 32x16 x2
+    row([lancer_frame(f) for f in frames(src, 64, 204, 16, 52, 4)], 64, 192)       # Lancer walk (64,192) 16x52 x4
+    row([guardian_frame(f) for f in frames(src, 176, 224, 24, 32, 4)], 128, 192)   # Guardian walk (128,192) 24x32 x4
+    row([guardian_frame(f) for f in frames(src, 272, 224, 24, 32, 4)], 0, 244)     # attack (0,244)
+    row([harpist_frame(f) for f in frames(src, 128, 128, 16, 40, 4)], 96, 244)     # Harpist walk (96,244) 16x40
+    row([harpist_frame(f) for f in frames(src, 192, 128, 16, 40, 1)], 160, 244)    # bless (160,244)
+    row([harpist_frame(f) for f in frames(src, 208, 128, 16, 40, 4)], 176, 244)    # return (176,244)
+    row([harpist_frame(f) for f in frames(src, 272, 128, 16, 40, 1)], 240, 244)    # pray (240,244)
+    return big
+
+def units():
+    unit_sheet_v34(BLUE, unit_sheet(BLUE)).save(os.path.join(A, 'spr_sky_blue_alpha.png'))
+    unit_sheet_v34(RED, unit_sheet(RED)).save(os.path.join(A, 'spr_sky_red_alpha.png'))
+
+def fx_sheet():
+    out = Image.new('RGBA', (160, 176), (0, 0, 0, 0))
+    out.alpha_composite(gap_frame(), (0, 0)); out.alpha_composite(cloud_bridge(), (40, 0))
+    out.alpha_composite(gap_icon(), (88, 0)); out.alpha_composite(wind_icon(), (104, 0)); out.alpha_composite(observatory(), (120, 0))
+    out.alpha_composite(cloud_icon(), (144, 0))
+    for k in range(3): out.alpha_composite(bolt(k), (24 * k, 56))
+    out.save(os.path.join(A, 'spr_sky_fx_alpha.png'))
+
+_register_icons_v31 = register_icons
+def register_icons():
+    _register_icons_v31()
+    import art_hud as H
+    from art_north import body_icon
+    S = lambda side: Image.open(os.path.join(A, 'spr_sky_blue_alpha.png' if side == 0 else 'spr_sky_red_alpha.png')).convert('RGBA')
+    H.register((7, 3), lambda h, sel, side: body_icon(h, sel, S(side), (0, 192, 32, 16)))     # shepherd
+    H.register((8, 3), lambda h, sel, side: body_icon(h, sel, S(side), (64, 192, 16, 52)))    # lancer
+    H.register((9, 3), lambda h, sel, side: body_icon(h, sel, S(side), (128, 192, 24, 32)))   # guardian
+    H.register((0, 4), lambda h, sel, side: body_icon(h, sel, S(side), (160, 244, 16, 40)))   # harpist

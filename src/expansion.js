@@ -234,9 +234,15 @@ CONTENT.units.push(
  {id:56,name:'Griffin Rider',description:'Flies, and dives on weak ground units below',cost:55,techCost:15,internal:false,hud:[192,576]},
  {id:57,name:'Thundercloud Mage',description:'Calls lightning down on the strongest enemy',cost:50,techCost:15,internal:false,hud:[240,576]},
  {id:58,name:'Angel Guard',description:'Hovers over gaps and returns once from death',cost:45,techCost:11,internal:false,hud:[288,576]},
- {id:59,name:'Sky Battleship',description:'Heavy bomber with a flak turret',cost:90,techCost:20,internal:false,hud:[336,576]});
+ {id:59,name:'Sky Battleship',description:'Heavy bomber with a flak turret',cost:90,techCost:20,internal:false,hud:[336,576]},
+ // v3.4: air lanes, drifting clouds and four more sky units
+ {id:69,name:'Cloud Shepherd',description:'Flies high and shears clouds for 20 gold',cost:15,techCost:6,internal:false,hud:[336,624]},
+ {id:70,name:'Sky Lancer',description:'Spears low airships passing overhead',cost:35,techCost:11,internal:false,hud:[384,624]},
+ {id:71,name:'Stone Guardian',description:'Slow tank; climbs out of island gaps',cost:60,techCost:15,internal:false,hud:[432,624]},
+ {id:72,name:'Harpist',description:'Nearby allies may return once from death',cost:40,techCost:15,internal:false,hud:[0,768]});
 CONTENT.upgrades.push({id:9,name:'Observatory',description:'Allows purchase of sky units.',techCost:11});
 CONTENT.shopPages.push({name:'Sky Units',units:[55,58,57,56,59],upgrade:9,requires:9});
+CONTENT.shopPages.push({name:'Sky Units II',units:[69,70,72,71],upgrade:1000,unitReq:9,requires:9});
 const SBG=n=>`bg_sky_${n}.png`;
 const SKY_CASTLES=[
  [87,'Archon Lior the Gate',260,45,6,1,1,'meadow',[2,0,55,58,1],[9],[9]],
@@ -244,20 +250,20 @@ const SKY_CASTLES=[
  [89,'Archon Tavi the Bridge',270,45,6,1,1,'meadow2',[2,0,55,56,58,13],[9,0],[9]],
  [90,'Archon Ilan the Wall',250,15,11,1,1,'plains',[2,16,55,58,11,1],[9,3],[9,10]],
  [91,'Archon Ziva the Swift',250,10,11,1,2,'river',[2,21,55,56,4,15],[9,0],[10]],
- [92,'Archon Oren the Lost',300,30,11,2,0,'storm',[2,16,24,26,57,55,10],[9,4,2],[9,10]],
+ [92,'Archon Oren the Lost',300,30,11,2,0,'storm',[2,16,24,26,57,55,10,69],[9,4,2],[9,10]],
  [93,'Archon Dafna the Greedy',280,30,11,2,1,'meadow',[2,3,55,58,18,42],[9,2,7],[9]],
- [94,'Archon Eitan the Thunder',330,45,11,2,1,'peaks',[2,16,57,13,12,33,0,10],[9,2,0],[10]],
- [95,'Archon Mira the Black',290,12,11,2,2,'dusk',[2,16,55,58,0,5],[9,0,3],[9,10]],
- [96,'Archon Gil the Watcher',320,25,15,2,1,'peaks',[2,16,56,59,24,26,55],[9,4,0],[9]],
- [97,'Archon Rafi the Red',330,30,15,2,1,'dawn',[2,16,57,36,33,19,5],[9,0,5],[10]],
- [98,'Archon Tamar the Wise',330,20,15,2,2,'forest',[2,16,55,58,39,12,13],[9,2,6],[9,10]],
- [99,'Archon Boaz the Stout',320,20,15,2,1,'meadow2',[2,16,38,58,55,0],[9,3,2,8],[9]],
- [100,'Archon Shira the Storm',350,25,15,2,2,'storm',[2,16,56,9,43,21,55,5],[9,3,0,7],[9,10]],
- [101,'Archon Amos the Old',350,20,18,2,1,'night',[2,16,59,44,58,55,0],[9,3,0,2,7],[9,10]],
- [102,'Seraphiel the Last',600,35,25,2,1,'dawn',[2,43,38,50,58,59,57,55],[9,0,2,3,4,5,6,7,8],[9,10]]];
+ [94,'Archon Eitan the Thunder',330,45,11,2,1,'peaks',[2,16,57,13,12,33,70,10],[9,2,0],[10]],
+ [95,'Archon Mira the Black',290,12,11,2,2,'dusk',[2,16,55,58,0,5,69],[9,0,3],[9,10]],
+ [96,'Archon Gil the Watcher',320,25,15,2,1,'peaks',[2,16,56,59,24,26,55,71],[9,4,0],[9]],
+ [97,'Archon Rafi the Red',330,30,15,2,1,'dawn',[2,16,57,36,33,19,70],[9,0,5],[10]],
+ [98,'Archon Tamar the Wise',330,20,15,2,2,'forest',[2,16,55,58,39,12,72,69],[9,2,6],[9,10]],
+ [99,'Archon Boaz the Stout',320,20,15,2,1,'meadow2',[2,16,38,58,55,71],[9,3,2,8],[9]],
+ [100,'Archon Shira the Storm',350,25,15,2,2,'storm',[2,16,56,9,43,21,70,69],[9,3,0,7],[9,10]],
+ [101,'Archon Amos the Old',350,20,18,2,1,'night',[2,16,59,44,58,55,71,72],[9,3,0,2,7],[9,10]],
+ [102,'Seraphiel the Last',600,35,25,2,1,'dawn',[2,43,38,50,58,59,70,72],[9,0,2,3,4,5,6,7,8],[9,10]]];
 const skyCastles=SKY_CASTLES.map(([id,name,health,gold,techReward,difficulty,treeGrowth,bg,units,upgrades,elements],i)=>({
   id,name,position:SKY_MAP.castles[id],health,gold,techReward,difficulty,treeGrowth,flipped:i%2===0,background:SBG(bg),skin:6,
-  units,upgrades,allowsHeals:false,attackGround:true,attackAir:true,elements,...(id===102?{aiFrequency:.45}:{})}));
+  units,upgrades,allowsHeals:false,attackGround:true,attackAir:true,elements:[...elements,13],...(id===102?{aiFrequency:.45}:{})}));
 CONTENT.maps.push({id:5,name:'Sky Realm',image:'Map6.png',castles:skyCastles,connections:SKY_MAP.connections});
 CONTENT.maps[4].connections.find(c=>c.from===86&&c.to===1000).to=5;
 CONTENT.version='1.85+sky';
@@ -270,13 +276,17 @@ function skyEntries(texture){
    Griffin:anim('Griffin',0,24,64,48),GriffinFlyAnimation:anim('GriffinFly',0,24,64,48,3),
    Thunder:anim('Thunder',0,72,16,36),ThunderWalkAnimation:anim('ThunderWalk',0,72,16,36,4),ThunderAttackAnimation:anim('ThunderAttack',64,72,32,36,1),ThunderReturnAnimation:anim('ThunderReturn',96,72,16,36,4),
    Angel:anim('Angel',0,108,24,32),AngelWalkAnimation:anim('AngelWalk',0,108,24,32,4),AngelAttackAnimation:anim('AngelAttack',96,108,24,32,3,{Looping:false,RevertWhenOver:true}),
-   Battleship:anim('Battleship',0,140,64,48),BattleshipFlyAnimation:anim('BattleshipFly',0,140,64,48,2)};
+   Battleship:anim('Battleship',0,140,64,48),BattleshipFlyAnimation:anim('BattleshipFly',0,140,64,48,2),
+   Shepherd:anim('Shepherd',0,192,32,16),ShepherdFlyAnimation:anim('ShepherdFly',0,192,32,16,2),ShepherdWalkAnimation:anim('ShepherdWalk',0,192,32,16,2),ShepherdCarryAnimation:anim('ShepherdCarry',0,192,32,16,2),
+   Lancer:anim('Lancer',64,192,16,52),LancerWalkAnimation:anim('LancerWalk',64,192,16,52,4),LancerAttackAnimation:anim('LancerAttack',64,192,16,52,4),
+   Guardian:anim('Guardian',128,192,24,32),GuardianWalkAnimation:anim('GuardianWalk',128,192,24,32,4),GuardianAttackAnimation:anim('GuardianAttack',0,244,24,32,4,{Looping:false,RevertWhenOver:true}),
+   Harpist:anim('Harpist',96,244,16,40),HarpistWalkAnimation:anim('HarpistWalk',96,244,16,40,4),HarpistBlessAnimation:anim('HarpistBless',160,244,16,40,1),HarpistReturnAnimation:anim('HarpistReturn',176,244,16,40,4),HarpistPrayAnimation:anim('HarpistPray',240,244,16,40,1)};
   for(const v of Object.values(e))v.texture=texture;
   e.BoltAnimation=anim('Bolt',0,56,24,120,3,{texture:'spr_sky_fx_alpha.png'});
   return e;
 }
 for(const a of ['playerStandard','playerEgyptian'])Object.assign(ATLASES[a].entries,skyEntries('spr_sky_blue_alpha.png'));
 for(const a of ['computerMedieval','computerEgyptian'])Object.assign(ATLASES[a].entries,skyEntries('spr_sky_red_alpha.png'));
-Object.assign(UNIT_GEOMETRY,{bridger:[-8,-12,8,12],griffin:[-24,-16,24,16],thunder:[-8,-18,8,18],angel:[-10,-16,10,16],battleship:[-32,-24,32,24]});
+Object.assign(UNIT_GEOMETRY,{bridger:[-8,-12,8,12],griffin:[-24,-16,24,16],thunder:[-8,-18,8,18],angel:[-10,-16,10,16],battleship:[-32,-24,32,24],shepherd:[-16,-8,16,8],lancer:[-8,-26,8,26],guardian:[-12,-16,12,16],harpist:[-8,-20,8,20]});
 const SKY_CASTLE_IDS=skyCastles.map(c=>c.id);
 Object.assign(exports,{CONTENT,NORTH_CASTLE_IDS,EAST_CASTLE_IDS,UNDER_CASTLE_IDS,SKY_CASTLE_IDS});

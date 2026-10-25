@@ -18,10 +18,10 @@ def register(slot, fn): ICONS[slot] = fn
 def build():
     for f, side in SHEETS.items():
         p = os.path.join(A, f); src = Image.open(p).convert('RGBA').crop((0, 0, 480, 384))
-        out = Image.new('RGBA', (480, 768), (0, 0, 0, 0)); out.paste(src, (0, 0))
+        out = Image.new('RGBA', (480, 960), (0, 0, 0, 0)); out.paste(src, (0, 0))
         for (c, r), fn in ICONS.items():
             for sel in (0, 1):
-                base = 384 + 48 * r if r < 2 else 576 + 48 * (r - 2)   # pressed version always sits 96 px lower
+                base = 384 + 48 * r if r < 2 else 576 + 48 * (r - 2) if r < 4 else 768 + 48 * (r - 4)   # pressed version always sits 96 px lower
                 out.alpha_composite(fn(src, sel, side), (48 * c, base + 96 * sel))
         out.save(p)
     print('hud ok', len(ICONS))

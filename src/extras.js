@@ -77,7 +77,7 @@ class RecordsScene extends Scene{
 }
 
 // ---------- Endless mode ----------
-const WAVE_POOL=['wood','soldier','strong','dog','thief','cavalry','zeppelin','archer','pike','petard','heavy','bomber','golem','ice','fire','ram','master','mummy','necro','cannon','grappler','wolves','berserker','napalm','giant','longship','rune','wormPriest','ninja','samurai','dancer','caster','trebuchet','ashigaru','yumi','merchant','bats','lavaGolem','moleRider','crossbow','angel','thunder','griffin','battleship'];
+const WAVE_POOL=['wood','soldier','strong','dog','thief','cavalry','zeppelin','archer','pike','petard','heavy','bomber','golem','ice','fire','ram','master','mummy','necro','cannon','grappler','wolves','berserker','napalm','giant','longship','rune','wormPriest','ninja','samurai','dancer','caster','trebuchet','ashigaru','yumi','merchant','bats','lavaGolem','moleRider','crossbow','angel','thunder','griffin','battleship','lancer','guardian'];
 const BGS=[['bg_grass.png','bg_forest1.png','bg_plains.png','bg_river.png','bg_mountains.png','bg_water2.png','bg_sunset.png'],
  ['bg_egypt_desert1.png','bg_egypt_nile2.png','bg_egypt_grass1.png','bg_egypt_desert4.png','bg_egypt_sunset1.png','bg_egypt_night1.png'],
  ['bg_north_hills.png','bg_north_forest.png','bg_north_fjord.png','bg_north_mountains.png','bg_north_aurora.png','bg_north_aurora_peaks.png'],
