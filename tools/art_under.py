@@ -112,7 +112,7 @@ def unit_sheet(src):
     row([lava_golem_frame(f) for f in frames(src, 176, 224, 24, 32, 4)], 0, 40)   # Lava golem walk (0,40)
     row([lava_golem_frame(f) for f in frames(src, 272, 224, 24, 32, 4)], 96, 40)  # attack (96,40)
     ex = 64 if src is BLUE else 64; ey = 48 if src is BLUE else 0
-    row([dwarf_frame(f) for f in frames(src, ex, ey, 16, 24, 4)], 0, 72)          # Dwarf walk (0,72)
+    row([dwarf_frame(f) for f in frames(src, 0, 0, 16, 24, 4)], 0, 72)          # Dwarf walk (0,72): woodcutter body
     row([b.resize((24, 10), Image.NEAREST) for b in BAT], 64, 72)                  # Bat 2 frames 24x10 at (64,72)
     return out
 
@@ -171,15 +171,16 @@ def register_icons():
         ic = U.icon_base(h, sel); ic.alpha_composite(anvil(), (22, 22)); return ic
     H.register((6, 1), fg)
     S = lambda side: Image.open(os.path.join(A, 'spr_under_blue_alpha.png' if side == 0 else 'spr_under_red_alpha.png')).convert('RGBA')
-    H.register((7, 1), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 0, 16, 20), 2, (0, 2)))      # miner
-    H.register((8, 1), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 24, 32, 16), 1, (0, 4)))     # burrower
-    H.register((9, 1), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 40, 24, 22), 2, (0, 4)))     # lava golem
+    from art_north import body_icon
+    H.register((7, 1), lambda h, sel, side: body_icon(h, sel, S(side), (0, 0, 16, 24)))       # miner
+    H.register((8, 1), lambda h, sel, side: body_icon(h, sel, S(side), (0, 24, 32, 16)))      # burrower
+    H.register((9, 1), lambda h, sel, side: body_icon(h, sel, S(side), (0, 40, 24, 32)))      # lava golem
     def bats(h, sel, side):
         oy = 96 if sel else 0; base = h.crop((432, 240 + oy, 480, 288 + oy)).copy(); sh = S(side)
         for i, (x, y) in enumerate(((8, 10), (22, 20), (12, 30))): base.alpha_composite(sh.crop((64 + 24 * (i % 2), 72, 88 + 24 * (i % 2), 82)), (x, y))
         return base
     H.register((0, 2), bats)                                                                             # bat swarm
-    H.register((1, 2), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 72, 16, 20), 2, (0, 2)))     # dwarf
+    H.register((1, 2), lambda h, sel, side: body_icon(h, sel, S(side), (0, 72, 16, 24)))      # dwarf
 
 
 def scenery():
@@ -198,3 +199,38 @@ def build():
 
 if __name__ == '__main__':
     build(); print('under ok')
+
+# ------------------------------------------------------------------ v3.1 redesign
+from art_parts import *
+OVER1, OVER2, LAMP = (70, 100, 160, 255), (46, 68, 120, 255), (255, 240, 120, 255)
+def miner_frame(f):
+    """Woodcutter body: yellow helmet with a lamp, brown overalls, pickaxe instead of the log."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if y < 5 and 0.5 < h < 0.7: p[x, y] = (220, 180, 50, 255)                       # cap -> helmet
+            elif 10 < y < 19 and (r, g, b) in SKIN and 2 < x < 10: p[x, y] = OVER1 if v > 0.6 else OVER2   # overalls
+            elif y >= 19 and 0.5 < h < 0.7: p[x, y] = OVER2                                 # trousers
+            elif .02 < h < .12 and s > .4 and y > 12 and v > .5: p[x, y] = (120, 90, 200, 255)   # log -> ore
+    put(f, 8, 2, LAMP); put(f, 9, 2, LAMP); put(f, 8, 3, LAMP)                               # lamp
+    return f
+STEEL1, STEEL2 = (190, 196, 210, 255), (130, 136, 156, 255)
+def dwarf_frame(f):
+    """Woodcutter body made stout: steel dome helmet, huge orange beard, leather vest."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if y < 5 and 0.5 < h < 0.7: p[x, y] = STEEL1 if y < 2 else STEEL2                 # helmet
+            elif 10 < y < 19 and (r, g, b) in SKIN and 2 < x < 10: p[x, y] = (110, 76, 44, 255)  # vest
+            elif y >= 19 and 0.5 < h < 0.7: p[x, y] = (70, 50, 34, 255)
+    for y in range(6, 14):                                                                   # beard: wide, down to the chest
+        for x in range(4, 11):
+            q = p[x, y] if 0 <= x < W else (0, 0, 0, 0)
+            if (q[3] and q[:3] != O[:3]) or (y > 9 and x > 5): put(f, x, y, BEARD if (x + y) % 3 else (200, 90, 30, 255))
+    return f

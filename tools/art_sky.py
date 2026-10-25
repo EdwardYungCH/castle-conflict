@@ -212,16 +212,41 @@ def register_icons():
         ic = U.icon_base(h, sel); ic.alpha_composite(observatory(), (22, 20)); return ic
     H.register((2, 2), ob)
     S = lambda side: Image.open(os.path.join(A, 'spr_sky_blue_alpha.png' if side == 0 else 'spr_sky_red_alpha.png')).convert('RGBA')
-    H.register((3, 2), lambda h, sel, side: unit_icon(h, sel, S(side), (64, 0, 16, 20), 2, (0, 2)))     # bridger (carrying a cloud)
-    def shrunk(side, y):   # the 64x48 frames shrink to 48x36 so the whole unit fits the button
-        return S(side).crop((0, y, 64, y + 48)).resize((48, 36), Image.NEAREST)
-    H.register((4, 2), lambda h, sel, side: unit_icon(h, sel, shrunk(side, 24), (0, 0, 48, 36), 1, (0, 2)))     # griffin
-    H.register((5, 2), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 72, 16, 22), 2, (0, 2)))     # thunder mage
-    H.register((6, 2), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 108, 24, 22), 2, (0, 2)))    # angel
-    H.register((7, 2), lambda h, sel, side: unit_icon(h, sel, shrunk(side, 140), (0, 0, 48, 36), 1, (0, 2)))   # battleship
+    from art_north import body_icon
+    H.register((3, 2), lambda h, sel, side: body_icon(h, sel, S(side), (64, 0, 16, 24)))      # bridger (carrying cloud planks)
+    H.register((4, 2), lambda h, sel, side: body_icon(h, sel, S(side), (0, 24, 64, 48)))      # griffin
+    H.register((5, 2), lambda h, sel, side: body_icon(h, sel, S(side), (0, 72, 16, 36)))      # thunder mage
+    H.register((6, 2), lambda h, sel, side: body_icon(h, sel, S(side), (0, 108, 24, 32)))     # angel
+    H.register((7, 2), lambda h, sel, side: body_icon(h, sel, S(side), (0, 140, 64, 48)))     # battleship
 
 def build():
     castle_skin(); map_icons(); units(); fx_sheet()
 
 if __name__ == '__main__':
     build(); print('sky ok')
+
+# ------------------------------------------------------------------ v3.1 redesign
+from art_parts import *
+HAT_W = (240, 244, 250, 255)
+def bridger_frame(f, carry=False):
+    """Woodcutter body: white hard hat, sky-blue shirt, cloud planks instead of the log."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if y < 5 and 0.5 < h < 0.7: p[x, y] = HAT_W if y < 3 else (200, 206, 216, 255)         # hard hat
+            elif 10 < y < 19 and (r, g, b) in SKIN and 2 < x < 10: p[x, y] = SKY1 if v > 0.6 else SKY2   # shirt
+            elif .02 < h < .12 and s > .4 and y > 12 and v > .5: p[x, y] = CLOUD1 if (x + y) % 3 else CLOUD2
+    return f
+def thunder_frame(f):
+    """Wizard in storm grey with a lightning bolt on the hat and a glowing staff."""
+    def fn(r, g, b, a):
+        if (r, g, b) == O[:3]: return None
+        h, s, v = hsv(r, g, b)
+        if 0.5 < h < 0.75 and s > 0.3: return STORM1 if v > .5 else STORM2
+        if h < 0.15 and s > 0.4 and v > 0.5: return BOLT
+        return None
+    f = recolor(f, fn); blit(f, lightning(), 6, 6)
+    return f

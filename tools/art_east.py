@@ -128,8 +128,8 @@ def unit_sheet(src):
     out = Image.new('RGBA', (256, 176), (0, 0, 0, 0))
     def row(fs, x, y):
         for i, fr in enumerate(fs): out.alpha_composite(fr, (x + i * fr.width, y))
-    row([ninja_frame(f) for f in frames(src, 0, 72, 16, 24, 4)], 0, 0)          # Ninja walk (0,0)
-    row([ninja_frame(f) for f in frames(src, 0, 96, 16, 24, 4)], 64, 0)         # Ninja carry (64,0)
+    row([ninja_frame(f, i) for i, f in enumerate(frames(src, 0, 72, 16, 24, 4))], 0, 0)          # Ninja walk (0,0)
+    row([ninja_frame(f, i) for i, f in enumerate(frames(src, 0, 96, 16, 24, 4))], 64, 0)         # Ninja carry (64,0)
     row([samurai_frame(f) for f in frames(src, 0, 192, 16, 32, 4)], 0, 24)      # Samurai walk (0,24)
     row([samurai_frame(f) for f in frames(src, 0, 224, 16, 32, 3)], 64, 24)     # Samurai attack (64,24)
     row([dancer_frame(f) for f in frames(src, 128, 128, 16, 40, 4)], 0, 56)     # Dancer walk (0,56)
@@ -191,14 +191,89 @@ def register_icons():
         ic = U.icon_base(h, sel); ic.alpha_composite(dojo(), (22, 20)); return ic
     H.register((0, 1), dj)
     S = lambda side: Image.open(os.path.join(A, 'spr_east_blue_alpha.png' if side == 0 else 'spr_east_red_alpha.png')).convert('RGBA')
-    H.register((1, 1), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 0, 16, 20), 2, (0, 2)))      # ninja
-    H.register((2, 1), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 24, 16, 22), 2, (0, 4)))     # samurai
-    H.register((3, 1), lambda h, sel, side: unit_icon(h, sel, S(side), (2, 138, 44, 30), 1, (0, 2)))    # trebuchet
-    H.register((4, 1), lambda h, sel, side: unit_icon(h, sel, S(side), (64, 62, 16, 21), 2, (0, 2)))    # dancer
-    H.register((5, 1), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 100, 16, 22), 2, (0, 2)))    # crane caster
+    from art_north import body_icon
+    H.register((1, 1), lambda h, sel, side: body_icon(h, sel, S(side), (0, 0, 16, 24)))       # ninja
+    H.register((2, 1), lambda h, sel, side: body_icon(h, sel, S(side), (0, 24, 16, 32)))      # samurai
+    H.register((3, 1), lambda h, sel, side: body_icon(h, sel, S(side), (0, 136, 48, 32)))     # trebuchet
+    H.register((4, 1), lambda h, sel, side: body_icon(h, sel, S(side), (64, 56, 16, 40)))     # dancer (with fan)
+    H.register((5, 1), lambda h, sel, side: body_icon(h, sel, S(side), (0, 96, 16, 36)))      # crane caster
 
 def build():
     castle_skin(); map_icons(); units(); fx_sheet()
 
 if __name__ == '__main__':
     build(); print('east ok')
+
+# ------------------------------------------------------------------ v3.1 redesign
+from art_parts import *
+def ninja_frame(f, k=0):
+    """Thief body in black with a red scarf streaming behind and a blade across the back."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if s < 0.3: p[x, y] = BLACK1 if v > 0.5 else BLACK2
+            elif 0.5 < h < 0.7: p[x, y] = BLACK1
+    for x in range(W):
+        if p[x, 5][3] and p[x, 5][:3] != O[:3]: p[x, 5] = REDL                 # headband
+    wob = [0, 1, 0, -1][k % 4]
+    for i in range(4): put(f, 2 - i if i < 3 else 0, 6 + (wob if i >= 2 else 0), REDL)   # scarf tail
+    for i in range(3): put(f, 1 + i, 12 - i, (200, 205, 215, 255))              # blade on the back
+    return f
+def samurai_frame(f):
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if 0.5 < h < 0.7 and s > 0.3: p[x, y] = REDL if v > 0.6 else REDD
+            elif s < 0.3 and y < 18: p[x, y] = REDD if v > 0.5 else (90, 20, 24, 255)   # helmet -> dark red lacquer
+            elif 0.4 < h < 0.5: p[x, y] = (0, 0, 0, 0)                        # plume gone: a crest instead
+    big = outline(from_rows(['#......#', '#......#', '.#....#.', '.#....#.', '..####..'], {'#': GOLD})); blit(f, big, 0, 0)   # kabuto crest
+    for x in range(2, 9): put(f, x, 7, GOLD)                                  # gold brow band
+    for y in (11, 12):                                                        # wide shoulder plates
+        for x in (0, 10, 11):
+            if 0 <= x < W: put(f, x, y, REDD if x else O)
+    return f
+HAIRB = (40, 34, 44, 255)
+def dancer_frame(f):
+    """Priest body without the hat: black hair with a bun and a gold pin, pink kimono."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    fb = face_box(f)
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if s < 0.25 and y >= 11: p[x, y] = PINK1 if v > 0.7 else PINK2
+            elif 0.5 < h < 0.7 and s > 0.3: p[x, y] = PINK2
+    if fb:
+        x0, x1, top, bot = fb
+        clear_above(f, top - 1)
+        hair = outline(from_rows(['.' + '#' * (x1 - x0 + 1) + '.', '#' * (x1 - x0 + 3)], {'#': HAIRB})); blit(f, hair, x0 - 1, top - 2)
+        blit(f, bun(HAIRB), x0 - 3, top - 1); put(f, x0 - 2, top - 2, GOLD); put(f, x0 - 1, top - 3, GOLD)
+        for y in range(top, bot + 1):                                          # hair down the back
+            put(f, x0 - 1, y, HAIRB); put(f, x0 - 2, y, O)
+        for y in range(top, top + 2):
+            for x in range(x0, x1 + 1):
+                if is_skin(p[x, y]) and x < x0 + 3: p[x, y] = HAIRB
+    return f
+def crane_caster_frame(f):
+    """Wizard body in white with a red sash, the pointed hat replaced by a wide straw hat."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    fb = face_box(f)
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if 0.5 < h < 0.7 and s > 0.3: p[x, y] = WHITE1 if v > 0.6 else WHITE2
+            elif s < 0.3 and v > 0.5: p[x, y] = REDL
+    if fb:
+        x0, x1, top, bot = fb
+        clear_above(f, top - 1, 0, W - 1)
+        hat = straw_hat(min(W, x1 - x0 + 9)); blit(f, hat, max(0, x0 - 4), top - 5)
+    return f

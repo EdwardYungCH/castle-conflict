@@ -157,8 +157,8 @@ def unit_sheet(src):
     out = Image.new('RGBA', (256, 144), (0, 0, 0, 0))
     def row(fs, x, y): 
         for i, fr in enumerate(fs): out.alpha_composite(fr, (x + i * fr.width, y))
-    row([berserker_frame(f) for f in frames(src, 0, 144, 16, 24, 4)], 0, 0)
-    row([berserker_frame(f) for f in frames(src, 0, 168, 16, 24, 3)], 64, 0)
+    row([berserker_frame(f) for f in frames(src, 0, 0, 16, 24, 4)], 0, 0)       # woodcutter body (bare chest)
+    row([berserker_frame(f) for f in frames(src, 0, 0, 16, 24, 3)], 64, 0)
     row([wolf_frame(f) for f in frames(src, 160, 352, 32, 16, 5)], 0, 24)
     row([wolf_frame(f) for f in frames(src, 160, 368, 32, 16, 3)], 160, 24)
     row([giant_frame(f) for f in frames(src, 176, 224, 24, 32, 4)], 0, 40)
@@ -254,6 +254,14 @@ def unit_icon(hud, sel, sheet, rect, scale, offset=(0, 0)):
     base.alpha_composite(clipped)
     return base
 
+def body_icon(hud, sel, sheet, rect, dy=0):
+    """Full-body icon like the originals: the whole frame at 1:1, shrunk (nearest) only if it does not fit 40x40."""
+    x, y, w, h = rect; fr = sheet.crop((x, y, x + w, y + h))
+    if w > 40 or h > 40:
+        k = min(40 / w, 40 / h); fr = fr.resize((max(1, round(w * k)), max(1, round(h * k))), Image.NEAREST)
+    oy = 96 if sel else 0; base = hud.crop((432, 240 + oy, 480, 288 + oy)).copy()
+    base.alpha_composite(fr, (24 - fr.width // 2, 24 - fr.height // 2 + dy)); return base
+
 def pack_icon(hud, sel, sheet):
     oy = 96 if sel else 0
     base = hud.crop((432, 240 + oy, 480, 288 + oy)).copy(); layer = Image.new('RGBA', (48, 48), (0, 0, 0, 0))
@@ -278,11 +286,11 @@ def register_icons():
         ic = U.icon_base(h, sel); ic.alpha_composite(longhouse(), (23, 22)); return ic
     H.register((2, 0), lh)
     S = lambda side: Image.open(os.path.join(A, 'spr_north_blue_alpha.png' if side == 0 else 'spr_north_red_alpha.png')).convert('RGBA')
-    H.register((3, 0), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 0, 16, 20), 2, (0, 2)))      # berserker
-    H.register((4, 0), lambda h, sel, side: pack_icon(h, sel, S(side)))   # wolves
-    H.register((5, 0), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 40, 24, 22), 2, (0, 4)))     # frost giant
-    H.register((6, 0), lambda h, sel, side: unit_icon(h, sel, S(side), (0, 78, 16, 21), 2, (0, 2)))     # rune priest
-    H.register((7, 0), lambda h, sel, side: unit_icon(h, sel, S(side), (8, 112, 40, 32), 1, (0, 2)))    # longship
+    H.register((3, 0), lambda h, sel, side: body_icon(h, sel, S(side), (0, 0, 16, 24)))       # berserker
+    H.register((4, 0), lambda h, sel, side: pack_icon(h, sel, S(side)))                        # wolves
+    H.register((5, 0), lambda h, sel, side: body_icon(h, sel, S(side), (0, 40, 24, 32)))      # frost giant
+    H.register((6, 0), lambda h, sel, side: body_icon(h, sel, S(side), (0, 72, 16, 40)))      # rune priest
+    H.register((7, 0), lambda h, sel, side: body_icon(h, sel, S(side), (0, 112, 48, 32)))     # longship
 
 if __name__ != '__main__':
     pass
@@ -290,3 +298,43 @@ if __name__ != '__main__':
 def scenery():
     src = Image.open(os.path.join(A, 'spr_atmos_alpha.png')).convert('RGBA')
     snowcap(src, depth=2, regions=[(80, 16, 160, 144)]).save(os.path.join(A, 'spr_north_atmos_alpha.png'))
+
+# ------------------------------------------------------------------ v3.1 redesign (distinct silhouettes)
+from art_parts import *
+RED_HAIR, RED_HAIR2 = (222, 60, 40, 255), (170, 40, 30, 255)
+FUR1, FUR2 = (150, 100, 56, 255), (110, 70, 40, 255)
+PAINT = (60, 140, 230, 255)
+def berserker_frame(f):
+    """Woodcutter body (bare chest): red crest of hair instead of the cap, fur kilt, blue war paint."""
+    f = f.copy(); px = f.load(); W, H = f.size
+    for y in range(0, 5):
+        for x in range(W):
+            p = px[x, y]
+            if opaque(p) and hsv(*p[:3])[0] > 0.5: px[x, y] = RED_HAIR if y < 3 else RED_HAIR2       # blue cap -> red hair
+    for y in range(18, H):
+        for x in range(W):
+            p = px[x, y]
+            if opaque(p) and hsv(*p[:3])[0] > 0.5: px[x, y] = FUR1 if (x + y) % 2 else FUR2            # shorts -> fur kilt
+    for (x, y) in ((4, 12), (5, 13), (6, 14), (7, 12), (8, 13)):                                        # war paint
+        if is_skin(px[x, y]): px[x, y] = PAINT
+    return f
+SLATE1, SLATE2, RUNE = (96, 104, 136, 255), (62, 68, 96, 255), (120, 240, 255, 255)
+def rune_frame(f):
+    """Priest body: the tall hat becomes a slate hood, white beard, slate robe with glowing runes."""
+    f = f.copy(); px = f.load(); W, H = f.size
+    fb = face_box(f)
+    if fb:
+        x0, x1, top, bot = fb
+        clear_above(f, top - 1)                                                   # drop the hat
+        w = x1 - x0 + 5
+        hd = outline(from_rows(['..' + '#' * (w - 4) + '..', '.' + '#' * (w - 2) + '.', '#' * w, '#' * w, '#' * w, '#' * w, '#' * w], {'#': SLATE1})); blit(f, hd, x0 - 2, top - 6)   # pointed hood
+        for y in range(top - 1, bot + 3):                                         # hood draped at the back and over the brow
+            put(f, x0 - 1, y, SLATE2); put(f, x0 - 2, y, O); put(f, x0, y, SLATE2) if y < top + 1 else None
+        for x in range(x0, x1 + 2): put(f, x, top - 1, SLATE2)
+        for y in range(bot - 1, bot + 2):                                         # white beard on the front
+            for x in range(x0 + 3, x1 + 1):
+                if is_skin(px[x, y]): px[x, y] = BONE1
+    grey_range(f, 0.2, lambda x, y, p: SLATE1 if hsv(*p[:3])[2] > 0.7 else SLATE2, ymin=(fb[3] + 2) if fb else 26)
+    for (x, y) in ((5, 29), (8, 32), (4, 35), (7, 37)): 
+        if 0 <= x < W and 0 <= y < H and opaque(px[x, y]): px[x, y] = RUNE
+    return f
