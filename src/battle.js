@@ -21,7 +21,7 @@ function drawCastle(ctx,atlas,side,upgrades,t,{debris=false,dx=0,dy=0}={}){
 }
 function unitAnim(u,battle){
   const unit=UNITS[u.type],stem=unit.sprite,attack=u.state==='attack'||u.engageUntil>battle.time;let anim=stem;
-  if(u.type==='treeCutter'&&u.carrying)anim='TreeTopHarvesterReturnAnimation';else if(u.type==='worm')anim='SandWorm'+u.phase+'Animation';else if(unit.role==='support'&&u.returning)anim=stem+'ReturnAnimation';else if(u.praying&&u.type!=='necro')anim=stem+(u.blessUntil>battle.time?'BlessAnimation':'PrayAnimation');else if(u.type==='witch'&&u.cat)anim='WitchCatWalkAnimation';else if(['fire','ice'].includes(u.type)&&u.returning)anim=stem+'ReturnAnimation';else if(u.type==='cash'&&u.carrying)anim='CashWizardReturnAnimation';else if(unit.flies)anim=stem+'FlyAnimation';else if(u.type==='bridger'&&(u.state==='attack'||u.returning))anim=stem+'CarryAnimation';else if(u.carrying)anim=stem+'CarryAnimation';else if(attack)anim=u.type==='pike'?'PikemanDefendAnimation':u.type==='ram'?stem+'WalkAnimation':stem+'AttackAnimation';else if(u.state==='walk'||u.state==='return')anim=stem+'WalkAnimation';
+  if(u.type==='treeCutter'&&u.carrying)anim='TreeTopHarvesterReturnAnimation';else if(u.type==='worm')anim='SandWorm'+u.phase+'Animation';else if(unit.role==='support'&&u.returning)anim=stem+'ReturnAnimation';else if(u.praying&&u.type!=='necro')anim=stem+(u.blessUntil>battle.time?'BlessAnimation':'PrayAnimation');else if(u.type==='witch'&&u.cat)anim='WitchCatWalkAnimation';else if(['fire','ice'].includes(u.type)&&u.returning)anim=stem+'ReturnAnimation';else if(u.type==='cash'&&u.carrying)anim='CashWizardReturnAnimation';else if(unit.flies)anim=stem+'FlyAnimation';else if(u.type==='bridger'&&(u.state==='attack'||u.returning))anim=stem+'CarryAnimation';else if(u.carrying)anim=stem+'CarryAnimation';else if(attack)anim=UNITS[u.type].pikeDefend?stem+'DefendAnimation':u.type==='ram'?stem+'WalkAnimation':stem+'AttackAnimation';else if(u.state==='walk'||u.state==='return')anim=stem+'WalkAnimation';
   return {anim,attack};
 }
 function drawUnit(ctx,atlas,u,battle,alpha=1){
@@ -32,7 +32,7 @@ function drawUnit(ctx,atlas,u,battle,alpha=1){
   const hasReturn=(u.type==='engineer'||(u.type==='treeCutter'&&u.carrying)||u.returning||(u.type==='cash'&&u.carrying));
   const fwd=u.side===0?1:-1,flip=hasReturn?false:u.carrying?u.facing===fwd:u.facing!==fwd;
   const timer=u.type==='worm'?battle.time-u.phaseStarted:attack?battle.time-u.attackStarted:battle.time-u.spawned;
-  const fps=u.carrying&&u.type==='thief'?4:attack?(unit.attackFps??(u.type==='pike'?1/.15:10)):(unit.walkFps??(u.type==='master'?10:1/.15));
+  const fps=u.carrying&&u.type==='thief'?4:attack?(unit.attackFps??(unit.pikeDefend?1/.15:10)):(unit.walkFps??(u.type==='master'?10:1/.15));
   const def=E[anim];if(attack&&def?.RevertWhenOver&&timer>=(def.Frames??1)/fps)anim=unit.sprite;
   drawEntry(ctx,atlas,anim,u.x,unitY(u),timer,{flipX:flip,fps:unit.flies?10:fps,alpha:(u.ghost?200/255:1)*alpha});
   if(u.frozenUntil>battle.time){const [l,t,r,b]=unitBounds(u);ctx.save();ctx.globalAlpha=.45*alpha;ctx.fillStyle='#bfeaff';ctx.fillRect(l,t,r-l,b-t);ctx.globalAlpha=.9*alpha;ctx.fillStyle='#ffffff';ctx.fillRect(l+1,t+1,2,2);ctx.fillRect(r-4,t+4,2,2);ctx.restore();}
@@ -51,7 +51,7 @@ class BattleScene extends Scene{
     const tg=D.TREE_GROWTH[P.treeGrowth]??D.TREE_GROWTH[1];
     const opts={ai:P.mode===2?[false,false]:[false,true],difficulty:P.difficulty,campaign:P.mode===1||!!P.campaign,campaignDifficulty:P.campaignDifficulty??0,globalDifficulty:P.globalDifficulty??0,
       rosters:[P.playerUnits,P.enemyUnits],cannons:P.cannons,hint:P.hint,easyQuick:P.easyQuick,aiFrequency:P.aiFrequency,mode:P.mode,
-      config:{startWood:P.startGold,castleHealth:P.playerHealth,treeChance:tg.treeChance,maxTrees:tg.maxTrees,allowHeals:P.allowHeals,tallTrees:P.elements.includes(1),antlion:P.elements.includes(2),blizzard:P.elements.includes(3),thinIce:P.elements.includes(4),fog:P.elements.includes(5),alwaysFog:!!P.alwaysFog,bridge:P.elements.includes(6),lava:P.elements.includes(7),tunnel:P.elements.includes(8),gaps:P.elements.includes(9),wind:P.elements.includes(10)}};
+      config:{startWood:P.startGold,castleHealth:P.playerHealth,treeChance:tg.treeChance,maxTrees:tg.maxTrees,allowHeals:P.allowHeals,tallTrees:P.elements.includes(1),antlion:P.elements.includes(2),blizzard:P.elements.includes(3),thinIce:P.elements.includes(4),fog:P.elements.includes(5),alwaysFog:!!P.alwaysFog,bridge:P.elements.includes(6),lava:P.elements.includes(7),tunnel:P.elements.includes(8),gaps:P.elements.includes(9),wind:P.elements.includes(10),bamboo:P.elements.includes(11)}};
     this.battle=restore?Battle.restore(restore,opts):new Battle(opts);const b=this.battle;
     if(!restore){b.sides[0].hp=b.sides[0].maxHp=P.playerHealth;b.sides[1].hp=b.sides[1].maxHp=P.enemyHealth;}
     this.skinL=D.SKINS[P.playerSkin].left;this.skinR=D.SKINS[P.mode===2?P.enemySkin:P.enemySkin].right;
@@ -129,7 +129,7 @@ class BattleScene extends Scene{
   hidePauseMenu(){this.pauseLayer?.remove();this.pauseLayer=null;}
   showUnitCard(type){if(!this.activeHud()||this.cardLayer)return;const u=UNITS[type],info=D.unitInfo(u.id),img=this.skinL.buttons;sfx('select.wav');
     const wasPaused=Director.paused;this.setPaused(true);this.pauseLocked=true;const L=new Node();this.cardLayer=L;L.add(C.fadeLayer(),0);
-    const kind=u.flies?'Air':u.tunnel?'Tunnel':'Ground',stats=`Strength ${u.strength}  Speed ${u.speed}  ${kind}`,castle=u.cs?`Castle damage ${u.cs*10}`:'No castle damage';
+    const kind=u.flies?'Air':u.tunnel?'Tunnel':u.boat?'Canal':'Ground',stats=`Strength ${u.strength}  Speed ${u.speed}  ${kind}`,castle=u.cs?`Castle damage ${u.cs*10}`:'No castle damage';
     L.add(new DrawNode(ctx=>{UI.panel(ctx,36,72,408,176);sprite(ctx,img,[u.hud[0],u.hud[1],48,48],76,116);text(ctx,'white',u.name,270,100);text(ctx,'tiny',`${u.cost} gold`,270,120);
       text(ctx,'tiny',stats,240,150);text(ctx,'tiny',castle,240,166);if(info?.description)text(ctx,'tiny',info.description,240,186);}),1);
     L.add(new Menu([btn('back',240,222,()=>{sfx('select.wav');L.remove();this.cardLayer=null;this.pauseLocked=false;this.setPaused(wasPaused);})]),2);this.add(L,21);}
@@ -189,7 +189,7 @@ class BattleScene extends Scene{
         case 'blimp':play(e.unitType==='bomber'?'bomber.wav':e.unitType==='napalm'?'napalmjet.wav':'blimp.wav');break;
         case 'drop':play('bombsaway.wav');break;case 'treeLand':play('treestick.wav');break;case 'fuse':play('petardfuse.wav');break;
         case 'fireball':play('fireball.wav');break;case 'ice':play('ice.wav');break;case 'polymorph':play('polytree.wav');break;case 'witch':play('polymorph.wav');break;
-        case 'bless':play('bless.wav');break;case 'blizzard':play('ice.wav');break;case 'lavaWarn':play('petardfuse.wav');break;case 'erupt':play('explosionbig.wav');break;case 'lavaKill':play('groundkill.wav');break;case 'lavaPool':play('fireball.wav');break;case 'seal':play('treestick.wav');break;case 'sealBroken':play('explosion.wav');break;case 'fog':play('blimp.wav');break;case 'bridgeBreak':play('explosionbig.wav');break;case 'bridgeHit':play('castlehit.wav');break;case 'bridgeFixed':play('treestick.wav');break;case 'stone':play('bombsaway.wav');break;case 'wind':play('bless.wav');break;case 'cranes':play('polymorph.wav');break;case 'craneCatch':play('treechop.wav');break;case 'iceFall':play('ice.wav');play('groundkill.wav');break;case 'crew':play('explosion.wav');break;case 'necro':play('necro.wav');break;case 'fall':play('groundkill.wav');break;case 'gust':play('bless.wav');break;case 'bridge':play('treestick.wav');break;case 'dive':play('groundkill.wav');break;case 'bolt':play('fireball.wav');if(e.unitType)play('explosionbig.wav');break;case 'flak':play('buy.wav');break;case 'revive':play('yay.wav');break;case 'worm':play('wurm.wav');break;case 'wormDie':play('wurmdie.wav');break;
+        case 'bless':play('bless.wav');break;case 'lantern':play('bless.wav');break;case 'burn':play('fireball.wav');break;case 'crew':play('yay.wav');break;case 'reveal':play('select.wav');break;case 'blizzard':play('ice.wav');break;case 'lavaWarn':play('petardfuse.wav');break;case 'erupt':play('explosionbig.wav');break;case 'lavaKill':play('groundkill.wav');break;case 'lavaPool':play('fireball.wav');break;case 'seal':play('treestick.wav');break;case 'sealBroken':play('explosion.wav');break;case 'fog':play('blimp.wav');break;case 'bridgeBreak':play('explosionbig.wav');break;case 'bridgeHit':play('castlehit.wav');break;case 'bridgeFixed':play('treestick.wav');break;case 'stone':play('bombsaway.wav');break;case 'wind':play('bless.wav');break;case 'cranes':play('polymorph.wav');break;case 'craneCatch':play('treechop.wav');break;case 'iceFall':play('ice.wav');play('groundkill.wav');break;case 'crew':play('explosion.wav');break;case 'necro':play('necro.wav');break;case 'fall':play('groundkill.wav');break;case 'gust':play('bless.wav');break;case 'bridge':play('treestick.wav');break;case 'dive':play('groundkill.wav');break;case 'bolt':play('fireball.wav');if(e.unitType)play('explosionbig.wav');break;case 'flak':play('buy.wav');break;case 'revive':play('yay.wav');break;case 'worm':play('wurm.wav');break;case 'wormDie':play('wurmdie.wav');break;
         case 'castleHit':play('castlehit.wav');if(this.modern&&e.amount>0)this.floats.push({str:'-'+e.amount,font:'tinyRed',x:e.side===0?48:432,y:150,life:0});break;
         case 'fight':play('groundkill.wav');if(this.modern&&e.x!==undefined)this.sparks.push({x:e.x,y:e.y,t:0});break;
         case 'gold':this.floats.push({str:(e.amount>0?'+':'')+e.amount,font:e.amount>0?'tiny':'tinyRed',x:e.x,y:e.y,life:0});break;
@@ -258,6 +258,12 @@ class BattleScene extends Scene{
         ctx.drawImage(img,g.x-4,92,8,4,x0,gy-9,g.w,330-gy);ctx.save();ctx.globalAlpha=.35;ctx.fillStyle='#2a3a5a';ctx.fillRect(x0,gy-9,g.w,6);ctx.restore();   // the island is cut: the sky shows through
         sprite(ctx,FX,[0,0,40,56],g.x,gy+19);
         if(g.bridgedUntil>=b.time){const left=g.bridgedUntil-b.time,a=Math.min(1,(b.time-g.builtAt)/.3,left/.8);sprite(ctx,FX,[40,0,44,12],g.x,gy-3,{alpha:a});}}}
+    // canal (Eastern Realm, with the drawbridge): a water lane in front of the field, boats sail it once the bridge is broken
+    if(b.canal){ctx.save();const y0=297,h=18;ctx.fillStyle='#27557f';ctx.fillRect(92,y0,296,h);ctx.fillStyle='#3f7fb3';ctx.fillRect(92,y0,296,3);
+      ctx.fillStyle='#78b4e0';for(let i=0;i<12;i++){const x=96+((i*41+t*16)%284);ctx.fillRect(Math.floor(x),y0+4+(i*7)%11,10,1);}
+      ctx.fillStyle='#7a5a36';ctx.fillRect(92,y0-2,296,2);ctx.fillStyle='#4a3620';ctx.fillRect(92,y0+h,296,2);
+      for(const l of b.lanterns){const a=Math.min(1,(l.until-b.time)/1);ctx.globalAlpha=.22*a;ctx.fillStyle='#ffd870';ctx.beginPath();ctx.ellipse(l.x,ground(l.x)-20,l.r,36,0,0,Math.PI*2);ctx.fill();}ctx.restore();}
+    else if(b.lanterns&&b.lanterns.length){ctx.save();for(const l of b.lanterns){const a=Math.min(1,(l.until-b.time)/1);ctx.globalAlpha=.22*a;ctx.fillStyle='#ffd870';ctx.beginPath();ctx.ellipse(l.x,ground(l.x)-20,l.r,36,0,0,Math.PI*2);ctx.fill();}ctx.restore();}
     if(b.bridge){const B=b.bridge,y=Math.floor(ground(240));sprite(ctx,'spr_north_fx_alpha.png',[72,48,36,10],240,y-2,{scale:2});
       sprite(ctx,'spr_east_fx_alpha.png',B.broken?[0,14,72,12]:[0,0,72,12],240,y-8);
       if(!B.broken&&B.hp<3)for(let k=0;k<3-B.hp;k++)sprite(ctx,'spr_east_fx_alpha.png',[26,14,20,12],222+18*k,y-8,{alpha:.5});}
@@ -296,7 +302,8 @@ class BattleScene extends Scene{
     // fog bank (Eastern Realm): hides the middle of the field
     if(b.fog){const f=b.fog,on=b.fogOn(),ft=on?Math.min(1,(b.time-(f.until===Infinity?-9:f.until-8))/1.2,(f.until-b.time)/1.2):0;
       if(ft>0){ctx.save();const g=ctx.createLinearGradient(f.x0-30,0,f.x1+30,0);g.addColorStop(0,'rgba(226,231,238,0)');g.addColorStop(.18,'rgba(226,231,238,.78)');g.addColorStop(.82,'rgba(226,231,238,.78)');g.addColorStop(1,'rgba(226,231,238,0)');
-        ctx.globalAlpha=ft;ctx.fillStyle=g;ctx.fillRect(f.x0-30,150,f.x1-f.x0+60,150);
+        const lit=x=>{let k=0;for(const l of b.lanterns){const d=Math.abs(x-l.x),a=Math.min(1,(l.until-b.time)/1);k=Math.max(k,a*Math.max(0,Math.min(1,(l.r-d)/(l.r*.4))));}return k;};
+        ctx.fillStyle=g;for(let x=f.x0-30;x<f.x1+30;x+=4){ctx.globalAlpha=ft*(1-.92*lit(x+2));ctx.fillRect(x,150,4,150);}
         ctx.fillStyle='#f2f5f8';for(let i=0;i<9;i++){const px=f.x0+20+((i*53+t*(6+i%3*3))%(f.x1-f.x0-40)),py=160+((i*41)%130)+Math.sin(t*.8+i)*4;ctx.globalAlpha=.35*ft;ctx.beginPath();ctx.ellipse(px,py,22+6*(i%3),9,0,0,Math.PI*2);ctx.fill();}
         ctx.restore();}}
     // gusts of wind (Sky Realm): white streaks race across the sky

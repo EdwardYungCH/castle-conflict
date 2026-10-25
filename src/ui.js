@@ -60,12 +60,13 @@ const ELEMENT_INFO={
   3:['Blizzard',['Every so often a blizzard blows for 6 seconds.','Ground units move at half speed in it.']],
   4:['Thin Ice',['The middle of the field is thin ice.','Heavy units (cavalry, rams, golems) may fall through.']],
   5:['Fog',['Fog rolls over part of the field.','Units inside it cannot be seen.']],
-  6:['Drawbridge',['A bridge spans the middle. Rams, giants and','longships damage it; broken, it is slow to cross.']],
+  6:['Drawbridge',['A bridge spans the canal. Rams, giants and','longships break it; then sampans can sail across.']],
   7:['Lava',['The ground glows red for a second, then erupts.','Ground units nearby die. Flyers are safe.']],
   8:['Tunnel',['A tunnel runs under the field. Tunnel units','ignore the surface; miners dig ore for gold.']],
   9:['Island Gaps',['The island is broken. Slow ground units stop at','the edge; fast ones fall. Bridge builders fix it.']],
-  10:['Wind',['Gusts of wind push every airship sideways.','Heavy battleships barely move.']]};
-const ELEMENT_ICON={1:[CON,[192,176,16,16]],2:[CON,[176,176,16,16]],3:['spr_north_fx_alpha.png',[96,0,16,16]],4:['spr_north_fx_alpha.png',[112,0,16,16]],5:['spr_east_fx_alpha.png',[80,0,16,16]],6:['spr_east_fx_alpha.png',[96,0,16,16]],7:['spr_under_fx_alpha.png',[80,0,16,16]],8:['spr_under_fx_alpha.png',[56,4,16,16]],9:['spr_sky_fx_alpha.png',[88,0,16,16]],10:['spr_sky_fx_alpha.png',[104,0,16,16]]};
+  10:['Wind',['Gusts of wind push every airship sideways.','Heavy battleships barely move.']],
+  11:['Bamboo',['The trees here are bamboo: worth less gold,','but they grow back 3 seconds after being cut.']]};
+const ELEMENT_ICON={1:[CON,[192,176,16,16]],2:[CON,[176,176,16,16]],3:['spr_north_fx_alpha.png',[96,0,16,16]],4:['spr_north_fx_alpha.png',[112,0,16,16]],5:['spr_east_fx_alpha.png',[80,0,16,16]],6:['spr_east_fx_alpha.png',[96,0,16,16]],7:['spr_under_fx_alpha.png',[80,0,16,16]],8:['spr_under_fx_alpha.png',[56,4,16,16]],9:['spr_sky_fx_alpha.png',[88,0,16,16]],10:['spr_sky_fx_alpha.png',[104,0,16,16]],11:['spr_east_fx_alpha.png',[80,16,16,16]]};
 function unseenElements(elements){const seen=Store.get('seenElements',[]);return elements.filter(e=>ELEMENT_INFO[e]&&!seen.includes(e));}
 function markSeen(e){const seen=Store.get('seenElements',[]);if(!seen.includes(e)){seen.push(e);Store.set('seenElements',seen);}}
 // Shows the cards one after another, then calls done.

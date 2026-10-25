@@ -100,9 +100,16 @@ CONTENT.units.push(
  {id:44,name:'Trebuchet',description:'Hurls stones at the castle from afar',cost:65,techCost:15,internal:false,hud:[144,432]},
  {id:45,name:'Fan Dancer',description:'Blows enemy airships backwards',cost:40,techCost:11,internal:false,hud:[192,432]},
  {id:46,name:'Crane Caster',description:'Paper cranes that catch arrows and shots',cost:50,techCost:15,internal:false,hud:[240,432]},
- {id:47,name:'Paper Crane',description:'',cost:0,techCost:0,internal:true,hud:[240,432]});
+ {id:47,name:'Paper Crane',description:'',cost:0,techCost:0,internal:true,hud:[240,432]},
+ // v3.2: the canal, bamboo and five more eastern units
+ {id:60,name:'Ashigaru',description:'Cheap pikeman: stops cavalry and samurai',cost:15,techCost:6,internal:false,hud:[384,576]},
+ {id:61,name:'Yumi Archer',description:'Fire arrows burn light units and bamboo',cost:45,techCost:15,internal:false,hud:[432,576]},
+ {id:62,name:'Tea Merchant',description:'Trades at the market for 40 gold',cost:20,techCost:8,internal:false,hud:[0,624]},
+ {id:63,name:'Lantern Bearer',description:'Lights the fog and reveals ninjas',cost:30,techCost:11,internal:false,hud:[48,624]},
+ {id:64,name:'Sampan',description:'Carries 2 soldiers past a broken bridge',cost:40,techCost:15,internal:false,hud:[96,624]});
 CONTENT.upgrades.push({id:7,name:'Dojo',description:'Allows purchase of eastern units.',techCost:11});
 CONTENT.shopPages.push({name:'Eastern Units',units:[42,43,45,46,44],upgrade:7,requires:7});
+CONTENT.shopPages.push({name:'Eastern Units II',units:[62,60,61,63,64],upgrade:1000,unitReq:7,requires:7});
 const EBG=n=>`bg_east_${n}.png`;
 const EAST_CASTLES=[
  [55,'Shogun Hideo the Welcoming',240,30,6,1,1,'coast',[2,0,42,1,43],[7],[]],
@@ -110,20 +117,20 @@ const EAST_CASTLES=[
  [57,'Shogun Mariko the Tide',250,30,6,1,1,'sea',[2,0,42,6,46,13],[7,0],[6]],
  [58,'Shogun Daichi the Wall',260,20,11,1,1,'terrace',[2,16,43,44,11,14],[7,3],[6]],
  [59,'Shogun Ayame the Swift',250,20,11,1,2,'bamboo2',[2,21,42,4,45,15],[7],[5]],
- [60,'Shogun Goro the Lost',280,15,11,2,0,'river',[2,16,24,26,46,22],[7,4,2],[5,6]],
- [61,'Shogun Ryo the Hungry',280,30,11,2,1,'terrace2',[2,3,42,43,18,44],[7,2],[6]],
- [62,'Shogun Hana the Flower',290,25,11,2,1,'bamboo2',[2,16,45,13,46,12],[7,2],[5]],
- [63,'Shogun Kuro the Black',300,20,11,2,2,'volcano2',[2,16,43,38,7,5,30],[7,0,3],[5]],
- [64,'Shogun Tadashi the True',300,25,15,2,1,'plains',[2,16,44,24,26,27,42],[7,4],[6]],
- [65,'Shogun Rin the Red',310,30,15,2,1,'volcano',[2,16,43,40,33,19,5],[7,0,5],[5]],
- [66,'Shogun Jiro the Fire',310,20,15,2,2,'volcano',[2,16,38,46,42,32,6],[7,0,2],[5,6]],
- [67,'Shogun Yuki the Wise',330,35,15,2,1,'sunset',[2,16,46,12,13,18,38],[7,2,4],[6]],
- [68,'Shogun Sora the Falcon',330,25,15,2,2,'sea',[2,16,45,9,43,21,40,5],[7,3,0],[5]],
- [69,'Shogun Masaru the Stout',350,20,18,2,1,'terrace',[2,16,38,10,11,44,17,7],[7,3,0,2],[5,6]],
- [70,'Takeda the Unseen',420,30,18,2,1,'volcano2',[2,16,43,42,46,45,44,33],[7,0,2,3,4,5,6],[5,6]]];
+ [60,'Shogun Goro the Lost',280,15,11,2,0,'river',[2,16,24,26,46,22,64],[7,4,2],[5,6]],
+ [61,'Shogun Ryo the Hungry',280,30,11,2,1,'terrace2',[2,3,42,43,18,44,60],[7,2],[6]],
+ [62,'Shogun Hana the Flower',290,25,11,2,1,'bamboo2',[62,16,45,13,46,12,61],[7,2],[5]],
+ [63,'Shogun Kuro the Black',300,20,11,2,2,'volcano2',[2,16,43,38,7,5,30,60],[7,0,3],[5]],
+ [64,'Shogun Tadashi the True',300,25,15,2,1,'plains',[2,16,44,24,26,27,42,64],[7,4],[6]],
+ [65,'Shogun Rin the Red',310,30,15,2,1,'volcano',[2,16,43,40,33,19,5,61],[7,0,5],[5]],
+ [66,'Shogun Jiro the Fire',310,20,15,2,2,'volcano',[2,16,38,46,42,32,6,63],[7,0,2],[5,6]],
+ [67,'Shogun Yuki the Wise',330,35,15,2,1,'sunset',[62,16,46,12,13,18,38,61],[7,2,4],[6]],
+ [68,'Shogun Sora the Falcon',330,25,15,2,2,'sea',[2,16,45,9,43,21,40,60],[7,3,0],[5]],
+ [69,'Shogun Masaru the Stout',350,20,18,2,1,'terrace',[2,16,38,10,11,44,60,64],[7,3,0,2],[5,6]],
+ [70,'Takeda the Unseen',420,30,18,2,1,'volcano2',[2,16,43,42,46,45,61,64],[7,0,2,3,4,5,6],[5,6]]];
 const eastCastles=EAST_CASTLES.map(([id,name,health,gold,techReward,difficulty,treeGrowth,bg,units,upgrades,elements],i)=>({
   id,name,position:EAST_MAP.castles[id],health,gold,techReward,difficulty,treeGrowth,flipped:i%2===0,background:EBG(bg),skin:4,
-  units,upgrades,allowsHeals:false,attackGround:true,attackAir:true,elements,...(id===70?{aiFrequency:.55,alwaysFog:true}:{})}));
+  units,upgrades,allowsHeals:false,attackGround:true,attackAir:true,elements:[...elements,11],...(id===70?{aiFrequency:.55,alwaysFog:true}:{})}));
 CONTENT.maps.push({id:3,name:'Eastern Realm',image:'Map4.png',castles:eastCastles,connections:EAST_MAP.connections});
 // The North's teaser ship now sails east.
 CONTENT.maps[2].connections.find(c=>c.from===54&&c.to===1000).to=3;
@@ -139,12 +146,18 @@ function eastEntries(texture){
    FanDancerReturnAnimation:anim('FanDancerReturn',80,56,16,40,4),FanDancerPrayAnimation:anim('FanDancerPray',144,56,16,40,1),
    CraneCaster:anim('CraneCaster',0,96,16,36),CraneCasterWalkAnimation:anim('CraneCasterWalk',0,96,16,36,4),CraneCasterAttackAnimation:anim('CraneCasterAttack',64,96,32,36,1),CraneCasterReturnAnimation:anim('CraneCasterReturn',96,96,16,36,4),
    PaperCrane:anim('PaperCrane',160,96,7,4),PaperCraneFlyAnimation:anim('PaperCraneFly',160,96,7,4,3),
-   Trebuchet:anim('Trebuchet',0,136,48,32),TrebuchetWalkAnimation:anim('TrebuchetWalk',0,136,48,32,4)};
+   Trebuchet:anim('Trebuchet',0,136,48,32),TrebuchetWalkAnimation:anim('TrebuchetWalk',0,136,48,32,4),
+   Ashigaru:anim('Ashigaru',0,168,16,52),AshigaruWalkAnimation:anim('AshigaruWalk',0,168,16,52,4),AshigaruDefendAnimation:anim('AshigaruDefend',64,168,48,32,1),
+   Yumi:anim('Yumi',112,168,16,24),YumiWalkAnimation:anim('YumiWalk',112,168,16,24,4),YumiAttackAnimation:anim('YumiAttack',176,168,16,24,3,{Looping:false,RevertWhenOver:true}),
+   Sampan:anim('Sampan',224,168,32,16),SampanWalkAnimation:anim('SampanWalk',224,168,32,16,2),FireArrow:anim('FireArrow',288,168,16,8),
+   Merchant:anim('Merchant',0,220,16,24),MerchantWalkAnimation:anim('MerchantWalk',0,220,16,24,4),MerchantCarryAnimation:anim('MerchantCarry',64,220,16,24,4),
+   Lantern:anim('Lantern',128,220,16,40),LanternWalkAnimation:anim('LanternWalk',128,220,16,40,4),LanternBlessAnimation:anim('LanternBless',192,220,16,40,1),
+   LanternReturnAnimation:anim('LanternReturn',208,220,16,40,4),LanternPrayAnimation:anim('LanternPray',272,220,16,40,1)};
   for(const v of Object.values(e))v.texture=texture;return e;
 }
 for(const a of ['playerStandard','playerEgyptian'])Object.assign(ATLASES[a].entries,eastEntries('spr_east_blue_alpha.png'));
 for(const a of ['computerMedieval','computerEgyptian'])Object.assign(ATLASES[a].entries,eastEntries('spr_east_red_alpha.png'));
-Object.assign(UNIT_GEOMETRY,{ninja:[-8,-12,8,12],samurai:[-8,-16,8,16],trebuchet:[-24,-16,24,16],dancer:[-8,-16,8,16],caster:[-16,-18,0,18],crane:[-6,-4,6,4]});
+Object.assign(UNIT_GEOMETRY,{ninja:[-8,-12,8,12],samurai:[-8,-16,8,16],trebuchet:[-24,-16,24,16],dancer:[-8,-16,8,16],caster:[-16,-18,0,18],crane:[-6,-4,6,4],ashigaru:[-8,-26,8,26],yumi:[-8,-12,8,12],merchant:[-8,-12,8,12],lantern:[-8,-20,8,20],sampan:[-16,-8,16,8]});
 const EAST_CASTLE_IDS=eastCastles.map(c=>c.id);
 
 // ======================================================================

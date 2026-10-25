@@ -277,3 +277,177 @@ def crane_caster_frame(f):
         clear_above(f, top - 1, 0, W - 1)
         hat = straw_hat(min(W, x1 - x0 + 9)); blit(f, hat, max(0, x0 - 4), top - 5)
     return f
+
+# ------------------------------------------------------------------ v3.2: canal, bamboo, five new units
+JIN1, JIN2 = (72, 60, 70, 255), (48, 40, 50, 255)          # lacquered jingasa
+SAFF1, SAFF2 = (236, 150, 50, 255), (190, 105, 30, 255)    # monk's saffron
+LAMP, LAMP2 = (255, 232, 120, 255), (255, 160, 40, 255)
+TEA = (74, 128, 60, 255)
+def jingasa(w=12):
+    rows = []
+    for y in range(4):
+        n = 2 + y * 3
+        if n > w: n = w
+        pad = (w - n) // 2
+        rows.append('.' * pad + ('J' if y < 3 else 'G') * n + '.' * (w - n - pad))
+    return outline(from_rows(rows, {'J': JIN1, 'G': GOLD}))
+
+def ashigaru_frame(f):
+    """Pikeman without plume or steel helmet: a conical jingasa over an open face, otherwise the team's foot soldier."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if 0.3 < h < 0.48 and s > 0.4: p[x, y] = (0, 0, 0, 0)           # green plume gone
+    helm = [(x, y) for y in range(0, min(H, 36)) for x in range(W) if opaque(p[x, y]) and hsv(*p[x, y][:3])[1] < 0.3 and 0.3 < hsv(*p[x, y][:3])[2] < 0.8]
+    if helm:
+        x0 = min(x for x, _ in helm); x1 = max(x for x, _ in helm); hb = max(y for _, y in helm); ht = min(y for _, y in helm)
+        for (x, y) in helm:
+            if y >= hb - 3: p[x, y] = (236, 150, 80, 255) if (x, y) != (x1, y) else (195, 136, 70, 255)   # lower helmet -> face
+            else: p[x, y] = (0, 0, 0, 0)
+        for y in range(0, hb - 3):                                            # outline left over the helmet
+            for x in range(max(0, x0 - 1), min(W, x1 + 2)):
+                if p[x, y][:3] == O[:3]: p[x, y] = (0, 0, 0, 0)
+        put(f, x0 - 1, hb - 3, O); put(f, x1 + 1, hb - 3, O)
+        blit(f, jingasa(min(W, x1 - x0 + 7)), max(0, x0 - 3), hb - 7)
+    return f
+
+def yumi_frame(f, fire=True):
+    """Archer under a wide straw hat; the arrow tips burn."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    fb = face_box(f)
+    if fb:
+        x0, x1, top, bot = fb
+        clear_above(f, top - 1, 0, W - 1)
+        for y in range(top, top + 2):
+            for x in range(W):
+                if p[x, y][:3] in HAIR: p[x, y] = (236, 150, 80, 255)
+        blit(f, straw_hat(min(W, x1 - x0 + 10)), max(0, x0 - 5), top - 5)
+    if fire:
+        for y in range(H):                                                  # white bow string / arrow pixels near the top right -> flame
+            for x in range(W - 5, W):
+                r, g, b, a = p[x, y]
+                if a and (r, g, b) != O[:3] and hsv(r, g, b)[1] < 0.15 and hsv(r, g, b)[2] > 0.8 and y < 8: p[x, y] = LAMP2 if (x + y) % 2 else LAMP
+    return f
+
+def merchant_frame(f, carry=False):
+    """Woodcutter in a straw hat; when returning he carries a green tea chest instead of a log."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    fb = face_box(f)
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if carry and fb and 0.02 < h < 0.12 and s > 0.4 and 13 <= y <= 20 and (x < fb[0] - 1 or x > fb[1] + 1 or y > fb[3]): p[x, y] = TEA if v > 0.6 else shade(TEA, .7)   # log -> tea chest
+    if fb:
+        x0, x1, top, bot = fb
+        clear_above(f, top - 1, 0, W - 1)
+        blit(f, straw_hat(min(W, x1 - x0 + 9)), max(0, x0 - 4), top - 5)
+    if carry:
+        for x in range(W):                                                   # gold band around the chest
+            if p[x, 16][:3] == TEA[:3]: p[x, 16] = GOLD
+    return f
+
+def lantern_frame(f):
+    """Priest as a saffron monk: shaved head, orange robe, a paper lantern on a pole held in front."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    fb = face_box(f)
+    for y in range(H):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if s < 0.25 and y >= 10: p[x, y] = SAFF1 if v > 0.7 else SAFF2
+            elif 0.5 < h < 0.7 and s > 0.3: p[x, y] = SAFF2
+            elif (r, g, b) in HAIR: p[x, y] = (236, 150, 80, 255)
+    if fb:
+        x0, x1, top, bot = fb
+        clear_above(f, top, 0, W - 1)
+        for x in range(x0, x1 + 1): put(f, x, top - 1, O)
+        put(f, x0 - 1, top, O); put(f, x1 + 1, top, O)
+    lamp = outline(from_rows(['.LL.', 'LRRL', 'LRRL', '.LL.'], {'L': LAMP, 'R': LAMP2}))
+    pole_x = W - 2
+    for y in range(16, 30): put(f, pole_x, y, WOOD2)
+    blit(f, lamp, W - 5, 13)
+    return f
+
+def sampan_frame(k, team):
+    """32x16 flat boat: wooden hull, reed awning, two passengers in the team colour and a boatman with a pole."""
+    im = Image.new('RGBA', (32, 16), (0, 0, 0, 0)); bob = k % 2
+    for x in range(2, 30):                                                  # hull
+        y0 = 9 + bob - (1 if x in (2, 29) else 0)
+        rect(im, x, y0, x, 13 + bob, WOOD1 if (x // 3) % 2 else WOOD2)
+    rect(im, 3, 9 + bob, 28, 9 + bob, (190, 130, 70, 255))
+    rect(im, 10, 3 + bob, 21, 5 + bob, (206, 170, 80, 255)); rect(im, 11, 6 + bob, 20, 6 + bob, (150, 110, 50, 255))   # awning
+    for x in (12, 18):                                                       # passengers under the awning
+        rect(im, x, 7 + bob, x + 2, 8 + bob, team); put(im, x + 1, 6 + bob, (236, 150, 80, 255))
+    rect(im, 25, 4 + bob, 26, 8 + bob, SAFF2); put(im, 25, 3 + bob, (236, 150, 80, 255)); put(im, 26, 3 + bob, (236, 150, 80, 255))   # boatman
+    for y in range(2 + bob, 14 + bob): put(im, 28, y, WOOD2)                 # pole
+    return outline(im)
+
+def fire_arrow():
+    im = Image.new('RGBA', (16, 8), (0, 0, 0, 0))
+    rect(im, 2, 3, 12, 3, (230, 230, 240, 255)); rect(im, 2, 2, 3, 4, (240, 240, 250, 255))
+    for x, y, c in ((12, 2, LAMP2), (13, 3, LAMP), (14, 3, LAMP2), (13, 4, LAMP2), (12, 4, LAMP), (15, 3, LAMP)): put(im, x, y, c)
+    return im
+
+def unit_sheet_v32(src, out):
+    """Appends the v3.2 units to the Eastern unit sheet (rows from y=168)."""
+    team = team_colour(src)
+    big = Image.new('RGBA', (320, 268), (0, 0, 0, 0)); big.alpha_composite(out, (0, 0))
+    def row(fs, x, y):
+        for i, fr in enumerate(fs): big.alpha_composite(fr, (x + i * fr.width, y))
+    row([ashigaru_frame(f) for f in frames(src, 64, 204, 16, 52, 4)], 0, 168)     # Ashigaru walk (0,168) 16x52 x4
+    row([ashigaru_frame(f) for f in frames(src, 128, 224, 48, 32, 1)], 64, 168)   # Ashigaru defend (64,168) 48x32
+    row([yumi_frame(f) for f in frames(src, 64, 72, 16, 24, 4)], 112, 168)        # Yumi walk (112,168) 16x24 x4
+    row([yumi_frame(f) for f in frames(src, 64, 96, 16, 24, 3)], 176, 168)        # Yumi attack (176,168) x3
+    row([sampan_frame(k, team) for k in range(2)], 224, 168)                       # Sampan (224,168) 32x16 x2
+    big.alpha_composite(fire_arrow(), (288, 168))                                  # FireArrow (288,168) 16x8
+    row([merchant_frame(f) for f in frames(src, 0, 0, 16, 24, 4)], 0, 220)         # Merchant walk (0,220)
+    row([merchant_frame(f, True) for f in frames(src, 0, 48, 16, 24, 4)], 64, 220) # Merchant carry (64,220)
+    row([lantern_frame(f) for f in frames(src, 128, 128, 16, 40, 4)], 128, 220)    # Lantern walk (128,220) 16x40 x4
+    row([lantern_frame(f) for f in frames(src, 192, 128, 16, 40, 1)], 192, 220)    # bless (192,220)
+    row([lantern_frame(f) for f in frames(src, 208, 128, 16, 40, 4)], 208, 220)    # return (208,220) x4
+    row([lantern_frame(f) for f in frames(src, 272, 128, 16, 40, 1)], 272, 220)    # pray (272,220)
+    return big
+
+def units():
+    unit_sheet_v32(BLUE, unit_sheet(BLUE)).save(os.path.join(A, 'spr_east_blue_alpha.png'))
+    unit_sheet_v32(RED, unit_sheet(RED)).save(os.path.join(A, 'spr_east_red_alpha.png'))
+
+def canal_icon():
+    im = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    rect(im, 1, 9, 14, 13, (70, 130, 200, 255))
+    for x in (2, 6, 10): rect(im, x, 10, x + 2, 10, (150, 200, 240, 255))
+    rect(im, 4, 6, 11, 8, WOOD1); rect(im, 5, 4, 10, 5, (206, 170, 80, 255))
+    return outline(im)
+
+def bamboo_icon():
+    im = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    for x in (4, 9):
+        rect(im, x, 1, x + 1, 14, (120, 190, 80, 255))
+        for y in (4, 8, 12): rect(im, x, y, x + 1, y, (70, 130, 50, 255))
+        put(im, x + 2, 3, (90, 170, 70, 255)); put(im, x + 3, 2, (90, 170, 70, 255)); put(im, x - 1, 7, (90, 170, 70, 255))
+    return outline(im)
+
+def fx_sheet():
+    out = Image.new('RGBA', (160, 48), (0, 0, 0, 0))
+    out.alpha_composite(bridge(), (0, 0)); out.alpha_composite(bridge(broken=True), (0, 14))
+    out.alpha_composite(fog_icon(), (80, 0)); out.alpha_composite(bridge_icon(), (96, 0)); out.alpha_composite(dojo(), (112, 0))
+    out.alpha_composite(canal_icon(), (136, 0)); out.alpha_composite(bamboo_icon(), (80, 16))
+    out.save(os.path.join(A, 'spr_east_fx_alpha.png'))
+
+_register_icons_v31 = register_icons
+def register_icons():
+    _register_icons_v31()
+    import art_hud as H
+    from art_north import body_icon
+    S = lambda side: Image.open(os.path.join(A, 'spr_east_blue_alpha.png' if side == 0 else 'spr_east_red_alpha.png')).convert('RGBA')
+    H.register((8, 2), lambda h, sel, side: body_icon(h, sel, S(side), (0, 168, 16, 52)))     # ashigaru
+    H.register((9, 2), lambda h, sel, side: body_icon(h, sel, S(side), (176, 168, 16, 24)))   # yumi (attack pose)
+    H.register((0, 3), lambda h, sel, side: body_icon(h, sel, S(side), (64, 220, 16, 24)))    # merchant with chest
+    H.register((1, 3), lambda h, sel, side: body_icon(h, sel, S(side), (192, 220, 16, 40)))   # lantern bearer
+    H.register((2, 3), lambda h, sel, side: body_icon(h, sel, S(side), (224, 168, 32, 16)))   # sampan
