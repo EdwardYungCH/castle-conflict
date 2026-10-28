@@ -108,7 +108,7 @@ def angel_frame(f):
             r, g, b, a = p[x, y]
             if not a or (r, g, b) == O[:3]: continue
             h, s, v = hsv(r, g, b)
-            if 0.5 < h < 0.75 and s > 0.3: p[x, y] = CLOUD1 if v > .55 else CLOUD2     # blue tunic -> white
+            if 0.5 < h < 0.75 and s > 0.3: continue                                    # tunic keeps the team colour
             elif s < .3 and v > .55: p[x, y] = GOLD1 if v > .75 else GOLD2            # armour -> gold
     out = Image.new('RGBA', (24, H), (0, 0, 0, 0))
     wg = wings(14, 12, True); out.alpha_composite(wg, (0, 9)); out.alpha_composite(f, (8, 0))
@@ -241,14 +241,17 @@ def bridger_frame(f, carry=False):
             elif .02 < h < .12 and s > .4 and y > 12 and v > .5: p[x, y] = CLOUD1 if (x + y) % 3 else CLOUD2
     return f
 def thunder_frame(f):
-    """Wizard in storm grey with a lightning bolt on the hat and a glowing staff."""
-    def fn(r, g, b, a):
-        if (r, g, b) == O[:3]: return None
-        h, s, v = hsv(r, g, b)
-        if 0.5 < h < 0.75 and s > 0.3: return STORM1 if v > .5 else STORM2
-        if h < 0.15 and s > 0.4 and v > 0.5: return BOLT
-        return None
-    f = recolor(f, fn); blit(f, lightning(), 6, 6)
+    """Wizard with a storm-grey hat (lightning bolt on it) over a team-coloured robe."""
+    f = f.copy(); p = f.load(); W, H = f.size
+    skin = [y for y in range(H) for x in range(W) if p[x, y][3] and p[x, y][:3] in ((195, 136, 70), (255, 166, 88))]
+    face_top = min(skin) if skin else 16
+    for y in range(face_top):
+        for x in range(W):
+            r, g, b, a = p[x, y]
+            if not a or (r, g, b) == O[:3]: continue
+            h, s, v = hsv(r, g, b)
+            if s > 0.3 and (0.5 < h < 0.75 or h < 0.1): p[x, y] = STORM1 if v > .6 else STORM2
+    blit(f, lightning(), 6, 6)
     return f
 
 # ------------------------------------------------------------------ v3.4: air lanes, drifting clouds, four more units
@@ -290,7 +293,7 @@ def guardian_frame(f):
             if not a or (r, g, b) == O[:3]: continue
             h, s, v = hsv(r, g, b)
             if s < .35: p[x, y] = STONE1 if v > .6 else STONE2
-            elif 0.5 < h < 0.75 and s > 0.3: p[x, y] = STONE2
+            elif 0.5 < h < 0.75 and s > 0.3: pass                                     # team colour stays
             elif .02 < h < .14 and s > .4: p[x, y] = STONE1 if v > .6 else STONE2
     for (x, y) in ((4, 8), (5, 7), (18, 8), (17, 7), (6, 8), (16, 8)):
         if 0 <= x < W and p[x, y][3] and p[x, y][:3] != O[:3]: p[x, y] = MOSS
@@ -360,3 +363,28 @@ def register_icons():
     H.register((8, 3), lambda h, sel, side: body_icon(h, sel, S(side), (64, 192, 16, 52)))    # lancer
     H.register((9, 3), lambda h, sel, side: body_icon(h, sel, S(side), (128, 192, 24, 32)))   # guardian
     H.register((0, 4), lambda h, sel, side: body_icon(h, sel, S(side), (160, 244, 16, 40)))   # harpist
+
+# ------------------------------------------------------------------ v3.6: the Sky Lancer no longer looks like a Sky-skin pikeman
+PENNANT = (90, 140, 210, 255)     # mapped to the team colour by art_team
+def lancer_v36(f):
+    """Lancer: bare head with a gold circlet (no winged helmet - that is the Sky skin's pikeman), a team
+    pennant under the lance tip and a round gold shield on the back."""
+    f = lancer_frame(f).copy(); p = f.load(); W, H = f.size
+    for y in range(H):
+        for x in range(W):
+            if p[x, y][3] and p[x, y][:3] == CLOUD1[:3]: p[x, y] = (0, 0, 0, 0)    # the plume-wing goes
+    shaft = [(x, y) for y in range(H) for x in range(W) if p[x, y][3] and p[x, y][:3] in ((190, 190, 200), GOLD1[:3])]
+    if shaft:
+        sx = min(x for x, _ in shaft); ty = min(y for _, y in shaft)
+        for y in range(ty + 4, ty + 8):
+            for x in range(sx + 1, sx + 1 + (ty + 8 - y)): put(f, x, y, PENNANT)
+    for (dx, dy) in ((0, 0), (1, 0), (2, 0), (-1, 1), (0, 1), (1, 1), (2, 1), (3, 1), (-1, 2), (0, 2), (1, 2), (2, 2), (3, 2), (0, 3), (1, 3), (2, 3)):
+        put(f, dx, 34 + dy, GOLD1 if (dx, dy) != (1, 1) else GOLD2)
+    return outline(f)
+
+_unit_sheet_v34 = unit_sheet_v34
+def unit_sheet_v34(src, out):
+    big = _unit_sheet_v34(src, out)
+    for i, fr in enumerate(frames(src, 64, 204, 16, 52, 4)):
+        big.paste(Image.new('RGBA', (16, 52), (0, 0, 0, 0)), (64 + 16 * i, 192)); big.alpha_composite(lancer_v36(fr), (64 + 16 * i, 192))
+    return big

@@ -257,6 +257,8 @@ def unit_icon(hud, sel, sheet, rect, scale, offset=(0, 0)):
 def body_icon(hud, sel, sheet, rect, dy=0):
     """Full-body icon like the originals: the whole frame at 1:1, shrunk (nearest) only if it does not fit 40x40."""
     x, y, w, h = rect; fr = sheet.crop((x, y, x + w, y + h))
+    bb = fr.getbbox()                                   # centre the figure itself, not its frame
+    if bb: fr = fr.crop(bb); w, h = fr.size
     if w > 40 or h > 40:
         k = min(40 / w, 40 / h); fr = fr.resize((max(1, round(w * k)), max(1, round(h * k))), Image.NEAREST)
     oy = 96 if sel else 0; base = hud.crop((432, 240 + oy, 480, 288 + oy)).copy()
@@ -286,7 +288,7 @@ def register_icons():
         ic = U.icon_base(h, sel); ic.alpha_composite(longhouse(), (23, 22)); return ic
     H.register((2, 0), lh)
     S = lambda side: Image.open(os.path.join(A, 'spr_north_blue_alpha.png' if side == 0 else 'spr_north_red_alpha.png')).convert('RGBA')
-    H.register((3, 0), lambda h, sel, side: body_icon(h, sel, S(side), (0, 0, 16, 24)))       # berserker
+    H.register((3, 0), lambda h, sel, side: body_icon(h, sel, S(side), (0, 0, 24, 24)))       # berserker (24 px frames since v3.6)
     H.register((4, 0), lambda h, sel, side: pack_icon(h, sel, S(side)))                        # wolves
     H.register((5, 0), lambda h, sel, side: body_icon(h, sel, S(side), (0, 40, 24, 32)))      # frost giant
     H.register((6, 0), lambda h, sel, side: body_icon(h, sel, S(side), (0, 72, 16, 40)))      # rune priest
@@ -482,3 +484,93 @@ def register_icons():
     H.register((3, 4), lambda h, sel, side: body_icon(h, sel, S(side), (64, 168, 16, 24)))    # huntress
     H.register((4, 4), lambda h, sel, side: body_icon(h, sel, S(side), (112, 168, 16, 24)))   # trapper
     H.register((5, 4), lambda h, sel, side: body_icon(h, sel, S(side), (64, 192, 16, 40)))    # skald
+
+# ------------------------------------------------------------------ v3.6: telling look-alikes apart
+STEEL_A, STEEL_B, HAFT = (210, 216, 228, 255), (150, 156, 176, 255), (120, 80, 40, 255)
+def skin_px(f):
+    p = f.load(); W, H = f.size
+    return [(x, y) for y in range(H) for x in range(W) if p[x, y][3] and p[x, y][:3] in ((195, 136, 70), (255, 166, 88))]
+
+def axe_at(f, hx, hy, d, pose):
+    """One hand axe gripped at (hx, hy); d = +1 blade forward, -1 blade backward.
+    pose 'low': hanging down and out, 'high': raised over the head, 'chop': swung forward level."""
+    if pose == 'low':
+        handle = [(hx + d * i, hy + i) for i in range(1, 4)]; ex, ey = hx + d * 3, hy + 3
+        blade = [(ex + d * 1, ey - 2), (ex + d * 2, ey - 2), (ex + d * 1, ey - 1), (ex + d * 2, ey - 1), (ex + d * 3, ey - 1),
+                 (ex + d * 1, ey), (ex + d * 2, ey), (ex + d * 3, ey), (ex + d * 1, ey + 1), (ex + d * 2, ey + 1)]
+    elif pose == 'high':
+        handle = [(hx, hy - i) for i in range(1, 7)]; ex, ey = hx, hy - 6
+        blade = [(ex + d * 1, ey - 1), (ex + d * 1, ey), (ex + d * 1, ey + 1), (ex + d * 2, ey - 2), (ex + d * 2, ey - 1),
+                 (ex + d * 2, ey), (ex + d * 2, ey + 1), (ex + d * 2, ey + 2), (ex + d * 3, ey - 1), (ex + d * 3, ey + 1)]
+    else:
+        handle = [(hx + d * i, hy - 1) for i in range(1, 6)]; ex, ey = hx + d * 5, hy - 1
+        blade = [(ex + d, ey - 1), (ex + d, ey), (ex + d, ey + 1), (ex + d * 2, ey - 2), (ex + d * 2, ey - 1),
+                 (ex + d * 2, ey), (ex + d * 2, ey + 1), (ex + d * 2, ey + 2)]
+    for (x, y) in handle: put(f, x, y, HAFT)
+    for i, (x, y) in enumerate(blade): put(f, x, y, STEEL_A if i < 5 else STEEL_B)
+
+def berserker_v36(f16, k, attack=False):
+    """Bare-chested raider with a red crest of hair, a fur cape, a team-coloured kilt and an axe in each hand (24 px wide frame)."""
+    g = berserker_frame(f16).copy(); p = g.load(); W, H = g.size
+    for y in range(18, H):                                         # fur kilt -> team kilt
+        for x in range(W):
+            c = p[x, y]
+            if c[3] and c[:3] in (FUR1[:3], FUR2[:3]): p[x, y] = (88, 164, 255, 255) if y < 21 else (62, 118, 164, 255)
+    f = Image.new('RGBA', (24, 24), (0, 0, 0, 0)); f.alpha_composite(g, (4, 0)); p = f.load()
+    sk = [q for q in skin_px(f) if q[1] >= 11]
+    fx, fy = max(sk, key=lambda q: (q[0], -q[1])) if sk else (15, 16)
+    bx, by = min(sk, key=lambda q: (q[0], q[1])) if sk else (5, 14)
+    for y in range(10, 14):                                        # fur cape over the back shoulder
+        for x in range(bx - 1, bx + 3):
+            if p[x, y][3] and p[x, y][:3] != O[:3]: p[x, y] = FUR1 if (x + y) % 2 else FUR2
+    if attack:
+        axe_at(f, fx, fy, 1, ('high', 'chop', 'low')[k % 3])
+        axe_at(f, bx, by, -1, ('low', 'high', 'high')[k % 3])
+    else:
+        axe_at(f, fx, fy, 1, 'low'); axe_at(f, bx, by, -1, 'low')
+    return outline(f)
+
+KNIT, KNIT2 = (236, 236, 240, 255), (200, 60, 60, 255)
+def fisher_v36(f, rod=False, k=0):
+    """Ice fisher: knitted white cap with a red stripe and pompom (not the fur hat every northern worker wears), rod always in hand."""
+    f = fisher_frame(f, rod, k); p = f.load(); W, H = f.size
+    for y in range(0, 5):
+        for x in range(W):
+            if p[x, y][3] and p[x, y][:3] in (FUR1[:3], FUR2[:3]): p[x, y] = KNIT2 if y == 3 else KNIT
+    top = min((y for y in range(H) for x in range(W) if p[x, y][3] and p[x, y][:3] == KNIT[:3]), default=0)
+    xs = [x for x in range(W) if p[x, top][3] and p[x, top][:3] == KNIT[:3]]
+    if xs: put(f, (min(xs) + max(xs)) // 2, max(0, top - 1), KNIT2); put(f, (min(xs) + max(xs)) // 2 + 1, max(0, top - 1), KNIT2)
+    if not rod:                                                    # rod over the shoulder while walking
+        for i in range(9): put(f, 3 + i, 14 - i, HAFT)
+        put(f, 12, 4, (230, 230, 240, 255)); put(f, 12, 5, (230, 230, 240, 255))
+    return outline(f)
+
+WOLF1, WOLF2 = (150, 154, 166, 255), (104, 108, 122, 255)
+def trapper_v36(f):
+    """Trapper wears a whole wolf pelt: grey hood with ears and a snout over the brow (the fur cap is the northern workers' look)."""
+    f = trapper_frame(f); p = f.load(); W, H = f.size
+    for y in range(0, 6):
+        for x in range(W):
+            if p[x, y][3] and p[x, y][:3] in (FUR1[:3], FUR2[:3]): p[x, y] = WOLF1 if (x + y) % 2 else WOLF2
+    cap = [(x, y) for y in range(0, 6) for x in range(W) if p[x, y][3] and p[x, y][:3] in (WOLF1[:3], WOLF2[:3])]
+    if cap:
+        x0 = min(x for x, _ in cap); x1 = max(x for x, _ in cap); t = min(y for _, y in cap)
+        for (x, y) in ((x0, t - 1), (x0 + 1, t - 2), (x1 - 2, t - 1), (x1 - 1, t - 2)): put(f, x, y, WOLF2)   # ears
+        put(f, x1 + 1, t + 2, WOLF1); put(f, x1 + 2, t + 2, WOLF2); put(f, x1 + 1, t + 1, (40, 40, 48, 255))  # snout and eye
+        for y in range(t + 2, t + 9): put(f, x0 - 1, y, WOLF2 if y % 2 else WOLF1)                           # pelt down the back
+    return outline(f)
+
+_unit_sheet_v35 = unit_sheet_v35
+def unit_sheet_v35(src, out):
+    big = _unit_sheet_v35(src, out)
+    def row(fs, x, y):
+        for i, fr in enumerate(fs):
+            big.paste(Image.new('RGBA', fr.size, (0, 0, 0, 0)), (x + i * fr.width, y)); big.alpha_composite(fr, (x + i * fr.width, y))
+    big.paste(Image.new('RGBA', (176, 24), (0, 0, 0, 0)), (0, 0))
+    row([berserker_v36(f, k) for k, f in enumerate(frames(src, 0, 0, 16, 24, 4))], 0, 0)          # Berserker walk, 24 px frames
+    row([berserker_v36(f, k, True) for k, f in enumerate(frames(src, 0, 0, 16, 24, 3))], 96, 0)   # Berserker attack (96,0): axes swing
+    row([fisher_v36(f) for f in frames(src, 0, 0, 16, 24, 4)], 0, 144)
+    row([fisher_v36(f) for f in frames(src, 0, 48, 16, 24, 4)], 64, 144)
+    row([fisher_v36(f, True, k) for k, f in enumerate(frames(src, 0, 0, 16, 24, 2))], 128, 144)
+    row([trapper_v36(f) for f in frames(src, 64, 48, 16, 24, 4)], 112, 168)
+    return big

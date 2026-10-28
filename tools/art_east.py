@@ -451,3 +451,33 @@ def register_icons():
     H.register((0, 3), lambda h, sel, side: body_icon(h, sel, S(side), (64, 220, 16, 24)))    # merchant with chest
     H.register((1, 3), lambda h, sel, side: body_icon(h, sel, S(side), (192, 220, 16, 40)))   # lantern bearer
     H.register((2, 3), lambda h, sel, side: body_icon(h, sel, S(side), (224, 168, 32, 16)))   # sampan
+
+# ------------------------------------------------------------------ v3.6: the tea merchant no longer looks like an eastern woodcutter
+HAORI1, HAORI2 = (200, 48, 48, 255), (140, 30, 30, 255)    # mapped to the team colour by art_team
+def merchant_v36(f, carry=False):
+    """Merchant: team-coloured haori jacket instead of a bare chest, small round hat, and a tall wooden
+    backpack frame with tea crates (the eastern woodcutter has a bare chest and a wide kasa)."""
+    f = merchant_frame(f, carry); p = f.load(); W, H = f.size
+    for y in range(10, 19):
+        for x in range(2, 11):
+            c = p[x, y]
+            if c[3] and c[:3] in ((195, 136, 70), (255, 166, 88)) and not (x >= 9 and y >= 15): p[x, y] = HAORI1 if (x + y) % 4 else HAORI2
+    # backpack frame on the back: two posts and three crates
+    for y in range(4, 19): put(f, 0, y, WOOD2)
+    for y in (5, 10, 15):
+        for x in range(0, 3): put(f, x, y, WOOD1)
+    for (y0, c) in ((6, TEA), (11, (180, 130, 70, 255))):
+        for y in range(y0, y0 + 4):
+            for x in range(1, 3): put(f, x, y, c if (x + y) % 3 else shade(c, .75))
+    return outline(f)
+
+_units_v32 = units
+def units():
+    _units_v32()
+    for side, src in (('blue', BLUE), ('red', RED)):
+        p = os.path.join(A, 'spr_east_%s_alpha.png' % side); big = Image.open(p).convert('RGBA')
+        for k, f in enumerate(frames(src, 0, 0, 16, 24, 4)):
+            big.paste(Image.new('RGBA', (16, 24), (0, 0, 0, 0)), (16 * k, 220)); big.alpha_composite(merchant_v36(f), (16 * k, 220))
+        for k, f in enumerate(frames(src, 0, 48, 16, 24, 4)):
+            big.paste(Image.new('RGBA', (16, 24), (0, 0, 0, 0)), (64 + 16 * k, 220)); big.alpha_composite(merchant_v36(f, True), (64 + 16 * k, 220))
+        big.save(p)

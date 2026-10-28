@@ -74,6 +74,8 @@ class BattleScene extends Scene{
     this.after(delay,()=>{if(this.modern&&!restore&&P.elements.length)introCards(this,P.elements,()=>this.startGame());else this.startGame();});
     if(S.surf)Audio.playMusic('surf.wav',true);else Audio.stopMusic();
   }
+  // Restart replaces one battle with another: the old scene's exit() runs after the new constructor, so the layout is applied again here.
+  enter(){super.enter?.();C.VIEW.setLayout(this.bar?64:0,this.bar?72:0);}
   exit(){Audio.stopMusic();C.VIEW.setLayout(0,0);}
   buildButtons(){
     const P=this.params,b=this.battle;this.unitMenus=[];

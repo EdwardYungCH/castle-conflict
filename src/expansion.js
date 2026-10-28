@@ -82,7 +82,7 @@ ATLASES.NorthScenery=clone('Scenery','spr_north_atmos_alpha.png');
 const anim=(Name,X,Y,Width,Height,Frames,extra={})=>({type:Frames?'Animation':'Sprite',X,Y,Width,Height,...(Frames?{Frames,Looping:true,RevertWhenOver:false}:{}),Name,...extra});
 function unitEntries(texture){
   const e={
-   Berserker:anim('Berserker',0,0,16,24),BerserkerWalkAnimation:anim('BerserkerWalk',0,0,16,24,4),BerserkerAttackAnimation:anim('BerserkerAttack',64,0,16,24,3,{Looping:false,RevertWhenOver:true}),
+   Berserker:anim('Berserker',0,0,24,24),BerserkerWalkAnimation:anim('BerserkerWalk',0,0,24,24,4),BerserkerAttackAnimation:anim('BerserkerAttack',96,0,24,24,3,{Looping:false,RevertWhenOver:true}),
    Wolf:anim('Wolf',0,24,32,16),WolfWalkAnimation:anim('WolfWalk',0,24,32,16,5),WolfAttackAnimation:anim('WolfAttack',160,24,32,16,3,{Looping:false,RevertWhenOver:true}),
    FrostGiant:anim('FrostGiant',0,40,24,32),FrostGiantWalkAnimation:anim('FrostGiantWalk',0,40,24,32,4),FrostGiantAttackAnimation:anim('FrostGiantAttack',96,40,24,32,4,{Looping:false,RevertWhenOver:true}),
    RunePriest:anim('RunePriest',0,72,16,40),RunePriestWalkAnimation:anim('RunePriestWalk',0,72,16,40,4),RunePriestBlessAnimation:anim('RunePriestBless',64,72,16,40,1),

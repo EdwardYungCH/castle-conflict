@@ -80,7 +80,6 @@ def lava_golem_frame(f):
         if s < 0.3:
             if v > 0.72: return LAVA2 if v < 0.85 else LAVA1                       # highlights -> glowing cracks
             return from_hsv(0.05, 0.3, 0.12 + v * 0.3, a)                          # body -> cooled basalt
-        if 0.5 < h < 0.7: return LAVA3
         return None
     return recolor(f, fn)
 
@@ -242,7 +241,7 @@ GLOW1, GLOW2 = (120, 255, 200, 255), (40, 180, 140, 255)
 def mole_rider_frame(f):
     """Burrower (mole) with a small helmeted dwarf sitting on its back, reins in hand."""
     f = burrower_frame(f).copy(); W, H = f.size
-    rider = outline(from_rows(['.SS.', 'SSSS', 'FFFF', '.BB.', '.VV.'], {'S': STEEL1, 'F': (236, 150, 80, 255), 'B': BEARD, 'V': (110, 76, 44, 255)}))
+    rider = outline(from_rows(['.SS.', 'SSSS', 'FFFF', '.BB.', '.VV.'], {'S': STEEL1, 'F': (236, 150, 80, 255), 'B': BEARD, 'V': (70, 50, 34, 255)}))
     blit(f, rider, W // 2 - 4, 0)
     return f
 
@@ -344,3 +343,43 @@ def register_icons():
     H.register((4, 3), lambda h, sel, side: body_icon(h, sel, S(side), (0, 112, 32, 16)))    # drill cart
     H.register((5, 3), lambda h, sel, side: body_icon(h, sel, S(side), (0, 128, 16, 24)))    # crossbow dwarf
     H.register((6, 3), lambda h, sel, side: body_icon(h, sel, S(side), (64, 152, 16, 40)))   # shaman
+
+# ------------------------------------------------------------------ v3.6: telling the dwarves apart
+BRASS1, BRASS2, LENS = (230, 180, 80, 255), (170, 120, 40, 255), (150, 230, 240, 255)
+def engineer_v36(f):
+    """Dwarf Engineer: brass helmet with big goggles and a wrench over the shoulder (soldiers of the
+    Dwarven skin wear plain steel helmets)."""
+    f = dwarf_frame(f).copy(); p = f.load(); W, H = f.size
+    for y in range(0, 5):
+        for x in range(W):
+            c = p[x, y]
+            if c[3] and c[:3] in (STEEL1[:3], STEEL2[:3]): p[x, y] = BRASS1 if y < 3 else BRASS2
+    hel = [x for x in range(W) for y in range(2, 5) if p[x, y][3] and p[x, y][:3] in (BRASS1[:3], BRASS2[:3])]
+    if hel:
+        gx = max(hel) - 3
+        for (x, y, c) in ((gx, 3, LENS), (gx + 1, 3, LENS), (gx + 2, 3, BRASS2), (gx + 3, 3, LENS), (gx + 4, 3, LENS)): put(f, x, y, c)
+    for i in range(8): put(f, 1 + i // 2, 8 + i, (170, 176, 192, 255))          # wrench handle over the back
+    for (x, y) in ((0, 6), (2, 6), (0, 7), (1, 7), (2, 7)): put(f, x, y, (200, 206, 220, 255))
+    return outline(f)
+
+KETTLE1, KETTLE2 = (150, 150, 162, 255), (100, 100, 114, 255)
+def crossbow_v36(f, attack=False):
+    """Crossbow Dwarf: wide-brimmed iron kettle hat (the Dwarven-skin workers wear leather caps)."""
+    f = crossbow_frame(f, attack).copy(); p = f.load(); W, H = f.size
+    cap = [(x, y) for y in range(0, 6) for x in range(W) if p[x, y][3] and p[x, y][:3] in ((120, 80, 40), (90, 60, 30))]
+    if cap:
+        x0 = min(x for x, _ in cap); x1 = max(x for x, _ in cap); t = min(y for _, y in cap)
+        for (x, y) in cap: p[x, y] = KETTLE1 if y < t + 2 else KETTLE2
+        for x in range(x0 - 2, x1 + 3): put(f, x, t + 3, KETTLE2)                  # wide brim
+    return outline(f)
+
+_unit_sheet_v33 = unit_sheet_v33
+def unit_sheet_v33(src, out):
+    big = _unit_sheet_v33(src, out)
+    def row(fs, x, y):
+        for i, fr in enumerate(fs):
+            big.paste(Image.new('RGBA', fr.size, (0, 0, 0, 0)), (x + i * fr.width, y)); big.alpha_composite(fr, (x + i * fr.width, y))
+    row([engineer_v36(f) for f in frames(src, 0, 0, 16, 24, 4)], 0, 72)
+    row([crossbow_v36(f) for f in frames(src, 0, 0, 16, 24, 4)], 0, 128)
+    row([crossbow_v36(f, True) for f in frames(src, 0, 0, 16, 24, 3)], 64, 128)
+    return big
